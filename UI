@@ -37,8 +37,30 @@ Library.Config = {
     GlowEnabled = true,
     RippleEnabled = true,
     CursorEffect = "Trail", -- "None", "Trail", "Particles"
-    BackgroundEffect = "Gradient" -- "None", "Gradient", "Scanlines", "Vignette"
+    BackgroundEffect = "Gradient", -- "None", "Gradient", "Scanlines", "Vignette"
+    Font = Enum.Font.Gotham, -- Font principale
+    FontBold = Enum.Font.GothamBold, -- Font pour titres
+    DraggableSections = true -- Sections déplaçables
 }
+
+-- Fonts disponibles
+Library.Fonts = {
+    ["Gotham"] = Enum.Font.Gotham,
+    ["Gotham Bold"] = Enum.Font.GothamBold,
+    ["Source Sans"] = Enum.Font.SourceSans,
+    ["Source Sans Bold"] = Enum.Font.SourceSansBold,
+    ["Ubuntu"] = Enum.Font.Ubuntu,
+    ["Roboto"] = Enum.Font.Roboto,
+    ["Roboto Mono"] = Enum.Font.RobotoMono,
+    ["Arcade"] = Enum.Font.Arcade,
+    ["Fantasy"] = Enum.Font.Fantasy,
+    ["Code"] = Enum.Font.Code
+}
+
+-- Helper function to get appropriate font
+function Library:GetFont(bold)
+    return bold and self.Config.FontBold or self.Config.Font
+end
 
 -- Thème (personnalisable)
 Library.Theme = {
@@ -251,6 +273,30 @@ function U:Drag(frame, handle)
             }, 0.1, Enum.EasingStyle.Sine)
         end
     end)
+end
+
+-- Make Section Draggable (NOUVEAU)
+function U:MakeSectionDraggable(sectionContainer, titleLabel)
+    if not titleLabel then return end
+    
+    titleLabel.Active = true
+    local isDragging = false
+    
+    -- Visual feedback on hover
+    titleLabel.MouseEnter:Connect(function()
+        if not isDragging then
+            U:Tween(titleLabel, { TextColor3 = Library.Theme.Primary }, 0.2)
+        end
+    end)
+    
+    titleLabel.MouseLeave:Connect(function()
+        if not isDragging then
+            U:Tween(titleLabel, { TextColor3 = Library.Theme.Text }, 0.2)
+        end
+    end)
+    
+    -- Drag logic
+    U:Drag(sectionContainer, titleLabel)
 end
 
 function U:Particles(parent)
@@ -522,7 +568,7 @@ function Library:CreateWindow(config)
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 20, 0, 8),
         Size = UDim2.new(1, -90, 0, 24),
-        Font = Enum.Font.GothamBold,
+        Font = Library:GetFont(true),
         Text = Window.Title,
         TextColor3 = Library.Theme.Text,
         TextSize = 18,
@@ -537,7 +583,7 @@ function Library:CreateWindow(config)
             BackgroundTransparency = 1,
             Position = UDim2.new(0, 20, 0, 32),
             Size = UDim2.new(1, -90, 0, 16),
-            Font = Enum.Font.Gotham,
+            Font = Library:GetFont(false),
             Text = Window.Subtitle,
             TextColor3 = Library.Theme.TextSub,
             TextSize = 13,
@@ -764,6 +810,30 @@ function Library:CreateWindow(config)
         
         local AppearanceSection = Window.SettingsTab:CreateSection("🎭 Appearance")
         
+        AppearanceSection:CreateDropdown({
+            Name = "Text Font",
+            Options = {"Gotham", "Gotham Bold", "Source Sans", "Source Sans Bold", "Ubuntu", "Roboto", "Roboto Mono", "Arcade", "Fantasy", "Code"},
+            Default = "Gotham",
+            Callback = function(value)
+                local selectedFont = Library.Fonts[value]
+                if selectedFont then
+                    Library.Config.Font = selectedFont
+                    Library.Config.FontBold = selectedFont
+                    
+                    -- Update all text elements
+                    for _, desc in ipairs(Window.GUI:GetDescendants()) do
+                        if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
+                            if desc.Name ~= "Title" and not desc.Name:find("Title") then
+                                desc.Font = Library.Config.Font
+                            else
+                                desc.Font = Library.Config.FontBold
+                            end
+                        end
+                    end
+                end
+            end
+        })
+        
         AppearanceSection:CreateSlider({
             Name = "Corner Radius",
             Min = 0,
@@ -811,6 +881,18 @@ function Library:CreateWindow(config)
                 Library.Theme.BorderAlpha = value / 100
             end
         })
+        
+        AppearanceSection:CreateToggle({
+            Name = "Draggable Sections",
+            Default = Library.Config.DraggableSections,
+            Callback = function(value)
+                Library.Config.DraggableSections = value
+                -- Note: Les sections déjà créées garderont leur comportement
+                -- Les nouvelles sections utiliseront cette valeur
+            end
+        })
+        
+        AppearanceSection:CreateLabel({ Text = "Tip: Drag sections by their title to move them!" })
         
         local TextSection = Window.SettingsTab:CreateSection("📝 Text Colors")
         
@@ -972,7 +1054,7 @@ function Library:CreateWindow(config)
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, -20, 0, 32),
                 Position = UDim2.new(0, 10, 0, 8),
-                Font = Enum.Font.GothamBold,
+                Font = Library.Config.FontBold,
                 Text = Section.Name,
                 TextColor3 = Library.Theme.Text,
                 TextSize = 15,
@@ -981,6 +1063,11 @@ function Library:CreateWindow(config)
                 ZIndex = 4,
                 Parent = Section.Container
             })
+            
+            -- Make section draggable
+            if Library.Config.DraggableSections then
+                U:MakeSectionDraggable(Section.Container, Section.Title)
+            end
             
             Section.ElementContainer = U:New("Frame", {
                 BackgroundTransparency = 1,
@@ -1010,7 +1097,7 @@ function Library:CreateWindow(config)
                     BackgroundColor3 = Library.Theme.Primary,
                     BackgroundTransparency = 0.1,
                     Size = UDim2.new(1, 0, 0, 38),
-                    Font = Enum.Font.GothamBold,
+                    Font = Library:GetFont(true),
                     Text = Button.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1053,7 +1140,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 0),
                     Size = UDim2.new(1, -60, 1, 0),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = Toggle.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1131,7 +1218,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 5),
                     Size = UDim2.new(1, -24, 0, 18),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = Slider.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1144,7 +1231,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(1, -60, 0, 5),
                     Size = UDim2.new(0, 50, 0, 18),
-                    Font = Enum.Font.GothamBold,
+                    Font = Library:GetFont(true),
                     Text = tostring(Slider.Value),
                     TextColor3 = Library.Theme.Primary,
                     TextSize = 14,
@@ -1237,7 +1324,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 0),
                     Size = UDim2.new(1, -24, 0, 20),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = Dropdown.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 13,
@@ -1251,7 +1338,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 0.3,
                     Position = UDim2.new(0, 12, 0, 22),
                     Size = UDim2.new(1, -24, 0, 32),
-                    Font = Enum.Font.Gotham,
+                    Font = Library:GetFont(false),
                     Text = "  " .. Dropdown.Value .. "  ▼",
                     TextColor3 = Library.Theme.TextSub,
                     TextSize = 13,
@@ -1323,7 +1410,7 @@ function Library:CreateWindow(config)
                         BackgroundColor3 = Library.Theme.FG,
                         BackgroundTransparency = 0.5,
                         Size = UDim2.new(1, 0, 0, 28),
-                        Font = Enum.Font.Gotham,
+                        Font = Library:GetFont(false),
                         Text = option,
                         TextColor3 = Library.Theme.TextSub,
                         TextSize = 13,
@@ -1367,7 +1454,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 0),
                     Size = UDim2.new(1, -60, 1, 0),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = ColorPicker.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1429,7 +1516,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 5),
                     Size = UDim2.new(1, -24, 0, 18),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = TextBox.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1443,7 +1530,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 0.3,
                     Position = UDim2.new(0, 12, 0, 26),
                     Size = UDim2.new(1, -24, 0, 30),
-                    Font = Enum.Font.Gotham,
+                    Font = Library:GetFont(false),
                     PlaceholderText = TextBox.PlaceholderText,
                     PlaceholderColor3 = Library.Theme.TextDim,
                     Text = TextBox.Value,
@@ -1497,7 +1584,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 12, 0, 0),
                     Size = UDim2.new(1, -90, 1, 0),
-                    Font = Enum.Font.GothamMedium,
+                    Font = Library:GetFont(false),
                     Text = Keybind.Name,
                     TextColor3 = Library.Theme.Text,
                     TextSize = 14,
@@ -1511,7 +1598,7 @@ function Library:CreateWindow(config)
                     BackgroundTransparency = 0.3,
                     Position = UDim2.new(1, -75, 0.5, -14),
                     Size = UDim2.new(0, 65, 0, 28),
-                    Font = Enum.Font.GothamBold,
+                    Font = Library:GetFont(true),
                     Text = Keybind.Value,
                     TextColor3 = Library.Theme.Primary,
                     TextSize = 12,
@@ -1554,7 +1641,7 @@ function Library:CreateWindow(config)
                 Label.Frame = U:New("TextLabel", {
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 24),
-                    Font = Enum.Font.Gotham,
+                    Font = Library:GetFont(false),
                     Text = Label.Text,
                     TextColor3 = Library.Theme.TextSub,
                     TextSize = 13,
