@@ -40,8 +40,65 @@ Library.Config = {
     BackgroundEffect = "Gradient", -- "None", "Gradient", "Scanlines", "Vignette"
     Font = Enum.Font.Gotham, -- Font principale
     FontBold = Enum.Font.GothamBold, -- Font pour titres
-    DraggableSections = true -- Sections déplaçables
+    DraggableSections = true, -- Sections déplaçables
+    SoundEffects = true -- Effets sonores
 }
+
+-- Sons (IDs Roblox doux et agréables)
+Library.Sounds = {
+    Hover = "rbxassetid://10066931761", -- Son doux de hover
+    Click = "rbxassetid://10066931838", -- Son doux de click
+    Toggle = "rbxassetid://10066932391" -- Son doux de toggle
+}
+
+-- Fonction pour jouer un son
+function Library:PlaySound(soundType)
+    if not self.Config.SoundEffects then return end
+    
+    local soundId = self.Sounds[soundType]
+    if not soundId then return end
+    
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 0.3 -- Volume bas pour ne pas être chiant
+    sound.Parent = game:GetService("SoundService")
+    sound:Play()
+    
+    -- Détruire après lecture
+    task.delay(2, function()
+        if sound and sound.Parent then
+            sound:Destroy()
+        end
+    end)
+end
+
+-- Global tracker pour les menus ouverts
+Library.OpenMenus = {
+    Dropdowns = {},
+    ColorPickers = {}
+}
+
+-- Fonction pour fermer tous les menus
+function Library:CloseAllMenus()
+    -- Fermer tous les dropdowns
+    for _, dropdown in pairs(self.OpenMenus.Dropdowns) do
+        if dropdown and dropdown.Open then
+            dropdown:Toggle()
+        end
+    end
+    
+    -- Fermer tous les color pickers
+    for _, picker in pairs(self.OpenMenus.ColorPickers) do
+        if picker then
+            if picker.PickerMenu and picker.PickerMenu.Visible then
+                picker.PickerMenu.Visible = false
+            end
+            if picker.CopyPasteMenu and picker.CopyPasteMenu.Visible then
+                picker.CopyPasteMenu.Visible = false
+            end
+        end
+    end
+end
 
 -- Fonts disponibles
 Library.Fonts = {
@@ -57,9 +114,16 @@ Library.Fonts = {
     ["Code"] = Enum.Font.Code
 }
 
--- Helper function to get appropriate font
-function Library:GetFont(bold)
-    return bold and self.Config.FontBold or self.Config.Font
+-- Helper function to update all corner radius
+function Library:UpdateCornerRadius()
+    for _, desc in ipairs(CoreGui:GetDescendants()) do
+        if desc:IsA("UICorner") and desc.Parent and desc.Parent:IsDescendantOf(CoreGui) then
+            -- Ne pas toucher aux corners circulaires (handles, avatars)
+            if desc.CornerRadius.Offset < 50 then
+                desc.CornerRadius = UDim.new(0, self.Config.CornerRadius)
+            end
+        end
+    end
 end
 
 -- Thème (personnalisable)
@@ -936,6 +1000,14 @@ function Library:CreateWindow(config)
             end
         })
         
+        EffectsSection:CreateToggle({
+            Name = "Sound Effects",
+            Default = Library.Config.SoundEffects,
+            Callback = function(value)
+                Library.Config.SoundEffects = value
+            end
+        })
+        
         EffectsSection:CreateSlider({
             Name = "Blur Intensity",
             Min = 0,
@@ -1023,7 +1095,7 @@ function Library:CreateWindow(config)
             Increment = 1,
             Callback = function(value)
                 Library.Config.CornerRadius = value
-                -- Note: Les nouveaux éléments auront le nouveau radius
+                Library:UpdateCornerRadius()
             end
         })
         
@@ -1204,6 +1276,9 @@ function Library:CreateWindow(config)
         
         -- Activate tab
         function Tab:Activate()
+            -- Fermer tous les menus ouverts
+            Library:CloseAllMenus()
+            
             for _, tab in pairs(self.Window.Tabs) do
                 tab.Active = false
                 tab.Content.Visible = false
@@ -1224,7 +1299,13 @@ function Library:CreateWindow(config)
         end
         
         Tab.Button.MouseButton1Click:Connect(function()
+            Library:PlaySound("Click")
             Tab:Activate()
+        end)
+        
+        -- Hover sound
+        Tab.Button.MouseEnter:Connect(function()
+            Library:PlaySound("Hover")
         end)
         
         U:Ripple(Tab.Button)
@@ -1728,6 +1809,9 @@ function Library:CreateWindow(config)
                     Dropdown.List.Visible = self.Open
                     
                     if self.Open then
+                        -- Fermer tous les autres menus avant d'ouvrir
+                        Library:CloseAllMenus()
+                        
                         -- Calculer position absolue du bouton
                         local btnPos = Dropdown.Button.AbsolutePosition
                         local btnSize = Dropdown.Button.AbsoluteSize
@@ -1743,10 +1827,21 @@ function Library:CreateWindow(config)
                         U:Tween(Dropdown.List, {
                             Size = UDim2.new(0, width, 0, maxHeight)
                         }, 0.25, Enum.EasingStyle.Quint)
+                        
+                        -- S'enregistrer
+                        table.insert(Library.OpenMenus.Dropdowns, self)
                     else
                         U:Tween(Dropdown.List, {
                             Size = UDim2.new(0, Dropdown.List.AbsoluteSize.X, 0, 0)
                         }, 0.2, Enum.EasingStyle.Quint)
+                        
+                        -- Se désenregistrer
+                        for i, dd in ipairs(Library.OpenMenus.Dropdowns) do
+                            if dd == self then
+                                table.remove(Library.OpenMenus.Dropdowns, i)
+                                break
+                            end
+                        end
                     end
                 end
                 
@@ -2165,10 +2260,15 @@ function Library:CreateWindow(config)
                 
                 -- Right Click: RGB/HSV Picker
                 ColorPicker.Display.MouseButton2Click:Connect(function()
+                    -- Fermer tous les autres menus
+                    Library:CloseAllMenus()
+                    
                     ColorPicker.CopyPasteMenu.Visible = false
                     ColorPicker.PickerMenu.Visible = not ColorPicker.PickerMenu.Visible
                     if ColorPicker.PickerMenu.Visible then
                         buildPickerMenu()
+                        -- S'enregistrer
+                        table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
                     end
                 end)
                 
@@ -2181,12 +2281,17 @@ function Library:CreateWindow(config)
                         
                         if mouse.X >= displayPos.X and mouse.X <= displayPos.X + displaySize.X and
                            mouse.Y >= displayPos.Y and mouse.Y <= displayPos.Y + displaySize.Y then
+                            -- Fermer tous les autres menus
+                            Library:CloseAllMenus()
+                            
                             ColorPicker.PickerMenu.Visible = false
                             ColorPicker.CopyPasteMenu.Visible = not ColorPicker.CopyPasteMenu.Visible
                             if ColorPicker.CopyPasteMenu.Visible then
                                 -- Position le menu
                                 ColorPicker.CopyPasteMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
                                 buildCopyPasteMenu()
+                                -- S'enregistrer
+                                table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
                             end
                         end
                     end
