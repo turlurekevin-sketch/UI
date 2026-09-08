@@ -89,13 +89,8 @@ function Library:CloseAllMenus()
     
     -- Fermer tous les color pickers
     for _, picker in pairs(self.OpenMenus.ColorPickers) do
-        if picker then
-            if picker.PickerMenu and picker.PickerMenu.Visible then
-                picker.PickerMenu.Visible = false
-            end
-            if picker.CopyPasteMenu and picker.CopyPasteMenu.Visible then
-                picker.CopyPasteMenu.Visible = false
-            end
+        if picker and picker.PickerMenu and picker.PickerMenu.Visible then
+            picker.PickerMenu.Visible = false
         end
     end
 end
@@ -123,6 +118,15 @@ function Library:UpdateCornerRadius()
                 desc.CornerRadius = UDim.new(0, self.Config.CornerRadius)
             end
         end
+    end
+end
+
+-- Helper function to get font
+function Library:GetFont(bold)
+    if bold and self.Config.FontBold then
+        return self.Fonts[self.Config.FontBold] or Enum.Font.GothamBold
+    else
+        return self.Fonts[self.Config.Font] or Enum.Font.Gotham
     end
 end
 
@@ -1905,7 +1909,7 @@ function Library:CreateWindow(config)
                 return Dropdown
             end
             
-            -- COLORPICKER (ULTRA COMPLET)
+            -- COLORPICKER (AVEC GRAND CARRÉ DE SÉLECTION)
             function Section:CreateColorPicker(config)
                 config = config or {}
                 
@@ -1914,8 +1918,13 @@ function Library:CreateWindow(config)
                     Default = config.Default or Color3.fromRGB(255, 255, 255),
                     Callback = config.Callback or function() end,
                     Value = config.Default or Color3.fromRGB(255, 255, 255),
-                    CopiedColor = nil
+                    Hue = 0,
+                    Sat = 1,
+                    Val = 1
                 }
+                
+                -- Convert color to HSV on init
+                ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Val = ColorPicker.Value:ToHSV()
                 
                 ColorPicker.Frame = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Panel,
@@ -1950,7 +1959,7 @@ function Library:CreateWindow(config)
                 U:Corner(ColorPicker.Display, 8)
                 U:Stroke(ColorPicker.Display, Library.Theme.Border, 2, 0.5)
                 
-                -- Picker Menu (RGB/HSV Sliders + Hex Input) - ScreenGui séparé
+                -- Picker Menu - ScreenGui séparé
                 ColorPicker.PickerMenuGui = U:New("ScreenGui", {
                     Name = "ColorPickerMenu_" .. math.random(1000, 9999),
                     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1962,7 +1971,7 @@ function Library:CreateWindow(config)
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.05,
                     Position = UDim2.new(0, 0, 0, 0),
-                    Size = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(0, 300, 0, 340),
                     Visible = false,
                     ZIndex = 1000,
                     Parent = ColorPicker.PickerMenuGui
@@ -1970,25 +1979,13 @@ function Library:CreateWindow(config)
                 U:Corner(ColorPicker.PickerMenu, 8)
                 U:Stroke(ColorPicker.PickerMenu, Library.Theme.Primary, 2, 0.8)
                 
-                -- Copy/Paste Menu (Middle Click) - ScreenGui séparé
-                ColorPicker.CopyPasteMenuGui = U:New("ScreenGui", {
-                    Name = "ColorCopyPasteMenu_" .. math.random(1000, 9999),
-                    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-                    DisplayOrder = 999,
-                    Parent = CoreGui
+                U:New("UIPadding", {
+                    PaddingTop = UDim.new(0, 10),
+                    PaddingBottom = UDim.new(0, 10),
+                    PaddingLeft = UDim.new(0, 10),
+                    PaddingRight = UDim.new(0, 10),
+                    Parent = ColorPicker.PickerMenu
                 })
-                
-                ColorPicker.CopyPasteMenu = U:New("Frame", {
-                    BackgroundColor3 = Library.Theme.Panel,
-                    BackgroundTransparency = 0.05,
-                    Position = UDim2.new(0, 0, 0, 0),
-                    Size = UDim2.new(0, 250, 0, 80),
-                    Visible = false,
-                    ZIndex = 1000,
-                    Parent = ColorPicker.CopyPasteMenuGui
-                })
-                U:Corner(ColorPicker.CopyPasteMenu, 8)
-                U:Stroke(ColorPicker.CopyPasteMenu, Library.Theme.Secondary, 2, 0.8)
                 
                 -- Helper to convert Color3 to Hex
                 local function colorToHex(color)
@@ -2011,289 +2008,294 @@ function Library:CreateWindow(config)
                     return nil
                 end
                 
-                function ColorPicker:Set(color)
-                    self.Value = color
-                    self.Display.BackgroundColor3 = color
-                    self.Callback(color)
+                -- Grand carré de sélection Saturation/Value
+                local SVCanvas = U:New("Frame", {
+                    BackgroundColor3 = Color3.fromHSV(ColorPicker.Hue, 1, 1),
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(1, -35, 0, 240),
+                    ZIndex = 1001,
+                    Parent = ColorPicker.PickerMenu
+                })
+                U:Corner(SVCanvas, 6)
+                
+                -- Gradient blanc vers transparent (Saturation)
+                local whiteGrad = U:New("Frame", {
+                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    Size = UDim2.new(1, 0, 1, 0),
+                    ZIndex = 1002,
+                    Parent = SVCanvas
+                })
+                U:Corner(whiteGrad, 6)
+                local whiteGradient = U:New("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+                    }),
+                    Transparency = NumberSequence.new({
+                        NumberSequenceKeypoint.new(0, 0),
+                        NumberSequenceKeypoint.new(1, 1)
+                    }),
+                    Parent = whiteGrad
+                })
+                
+                -- Gradient transparent vers noir (Value)
+                local blackGrad = U:New("Frame", {
+                    BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+                    Size = UDim2.new(1, 0, 1, 0),
+                    ZIndex = 1003,
+                    Parent = whiteGrad
+                })
+                U:Corner(blackGrad, 6)
+                local blackGradient = U:New("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+                    }),
+                    Transparency = NumberSequence.new({
+                        NumberSequenceKeypoint.new(0, 1),
+                        NumberSequenceKeypoint.new(1, 0)
+                    }),
+                    Rotation = 90,
+                    Parent = blackGrad
+                })
+                
+                -- Curseur sur le carré
+                local SVCursor = U:New("Frame", {
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    Position = UDim2.new(ColorPicker.Sat, 0, 1 - ColorPicker.Val, 0),
+                    Size = UDim2.new(0, 16, 0, 16),
+                    ZIndex = 1004,
+                    Parent = SVCanvas
+                })
+                U:Corner(SVCursor, 999)
+                U:Stroke(SVCursor, Color3.fromRGB(0, 0, 0), 2, 0)
+                
+                -- Barre de teinte (Hue) à droite
+                local HueBar = U:New("Frame", {
+                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    Position = UDim2.new(1, -25, 0, 0),
+                    Size = UDim2.new(0, 25, 0, 240),
+                    ZIndex = 1001,
+                    Parent = ColorPicker.PickerMenu
+                })
+                U:Corner(HueBar, 6)
+                
+                local HueGradient = U:New("UIGradient", {
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+                        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+                        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+                    }),
+                    Rotation = 90,
+                    Parent = HueBar
+                })
+                
+                -- Curseur de teinte
+                local HueCursor = U:New("Frame", {
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    Position = UDim2.new(0.5, 0, ColorPicker.Hue, 0),
+                    Size = UDim2.new(1, 4, 0, 6),
+                    ZIndex = 1002,
+                    Parent = HueBar
+                })
+                U:Corner(HueCursor, 3)
+                U:Stroke(HueCursor, Color3.fromRGB(0, 0, 0), 2, 0)
+                
+                -- RGB Values Display
+                local RGBDisplay = U:New("Frame", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 250),
+                    Size = UDim2.new(1, 0, 0, 30),
+                    ZIndex = 1001,
+                    Parent = ColorPicker.PickerMenu
+                })
+                
+                local r, g, b = math.floor(ColorPicker.Value.R * 255), math.floor(ColorPicker.Value.G * 255), math.floor(ColorPicker.Value.B * 255)
+                
+                local RGBLabel = U:New("TextLabel", {
+                    BackgroundColor3 = Library.Theme.FG,
+                    BackgroundTransparency = 0.3,
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(0.5, -5, 1, 0),
+                    Font = Library:GetFont(true),
+                    Text = string.format("%d, %d, %d", r, g, b),
+                    TextColor3 = Library.Theme.Text,
+                    TextSize = 12,
+                    ZIndex = 1002,
+                    Parent = RGBDisplay
+                })
+                U:Corner(RGBLabel, 6)
+                
+                -- Hex Input
+                local HexInput = U:New("TextBox", {
+                    BackgroundColor3 = Library.Theme.FG,
+                    BackgroundTransparency = 0.3,
+                    Position = UDim2.new(0.5, 5, 0, 0),
+                    Size = UDim2.new(0.5, -5, 1, 0),
+                    Font = Library:GetFont(false),
+                    PlaceholderText = "#FFFFFF",
+                    Text = colorToHex(ColorPicker.Value),
+                    TextColor3 = Library.Theme.TextSub,
+                    TextSize = 12,
+                    ZIndex = 1002,
+                    Parent = RGBDisplay
+                })
+                U:Corner(HexInput, 6)
+                
+                -- Copy/Paste Buttons
+                local ButtonsFrame = U:New("Frame", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 290),
+                    Size = UDim2.new(1, 0, 0, 30),
+                    ZIndex = 1001,
+                    Parent = ColorPicker.PickerMenu
+                })
+                
+                local CopyBtn = U:New("TextButton", {
+                    BackgroundColor3 = Library.Theme.Success,
+                    BackgroundTransparency = 0.2,
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(0.5, -5, 1, 0),
+                    Font = Library:GetFont(true),
+                    Text = "Copy",
+                    TextColor3 = Library.Theme.Text,
+                    TextSize = 12,
+                    ZIndex = 1002,
+                    Parent = ButtonsFrame
+                })
+                U:Corner(CopyBtn, 6)
+                U:Ripple(CopyBtn)
+                
+                local PasteBtn = U:New("TextButton", {
+                    BackgroundColor3 = Library.Theme.Warning,
+                    BackgroundTransparency = 0.2,
+                    Position = UDim2.new(0.5, 5, 0, 0),
+                    Size = UDim2.new(0.5, -5, 1, 0),
+                    Font = Library:GetFont(true),
+                    Text = "Paste",
+                    TextColor3 = Library.Theme.Text,
+                    TextSize = 12,
+                    ZIndex = 1002,
+                    Parent = ButtonsFrame
+                })
+                U:Corner(PasteBtn, 6)
+                U:Ripple(PasteBtn)
+                
+                -- Update color function
+                function ColorPicker:UpdateColor()
+                    self.Value = Color3.fromHSV(self.Hue, self.Sat, self.Val)
+                    self.Display.BackgroundColor3 = self.Value
+                    
+                    -- Update RGB display
+                    local r, g, b = math.floor(self.Value.R * 255), math.floor(self.Value.G * 255), math.floor(self.Value.B * 255)
+                    RGBLabel.Text = string.format("%d, %d, %d", r, g, b)
+                    HexInput.Text = colorToHex(self.Value)
+                    
+                    -- Update SV canvas color
+                    SVCanvas.BackgroundColor3 = Color3.fromHSV(self.Hue, 1, 1)
+                    
+                    self.Callback(self.Value)
                 end
                 
-                -- Build RGB/HSV Picker Menu
-                local function buildPickerMenu()
-                    for _, child in ipairs(ColorPicker.PickerMenu:GetChildren()) do
-                        if not child:IsA("UICorner") and not child:IsA("UIStroke") then
-                            child:Destroy()
-                        end
-                    end
-                    
-                    local h, s, v = ColorPicker.Value:ToHSV()
-                    local r, g, b = math.floor(ColorPicker.Value.R * 255), math.floor(ColorPicker.Value.G * 255), math.floor(ColorPicker.Value.B * 255)
-                    
-                    local layout = U:New("UIListLayout", {
-                        Padding = UDim.new(0, 8),
-                        SortOrder = Enum.SortOrder.LayoutOrder,
-                        Parent = ColorPicker.PickerMenu
-                    })
-                    
-                    U:New("UIPadding", {
-                        PaddingTop = UDim.new(0, 10),
-                        PaddingBottom = UDim.new(0, 10),
-                        PaddingLeft = UDim.new(0, 10),
-                        PaddingRight = UDim.new(0, 10),
-                        Parent = ColorPicker.PickerMenu
-                    })
-                    
-                    -- RGB Sliders
-                    local function createSlider(name, value, max, color, callback)
-                        local container = U:New("Frame", {
-                            BackgroundTransparency = 1,
-                            Size = UDim2.new(1, 0, 0, 25),
-                            ZIndex = 101,
-                            Parent = ColorPicker.PickerMenu
-                        })
-                        
-                        local label = U:New("TextLabel", {
-                            BackgroundTransparency = 1,
-                            Size = UDim2.new(0, 30, 1, 0),
-                            Font = Library:GetFont(true),
-                            Text = name,
-                            TextColor3 = color,
-                            TextSize = 13,
-                            TextXAlignment = Enum.TextXAlignment.Left,
-                            ZIndex = 102,
-                            Parent = container
-                        })
-                        
-                        local valueLabel = U:New("TextLabel", {
-                            BackgroundTransparency = 1,
-                            Position = UDim2.new(1, -35, 0, 0),
-                            Size = UDim2.new(0, 35, 1, 0),
-                            Font = Library:GetFont(true),
-                            Text = tostring(value),
-                            TextColor3 = Library.Theme.TextSub,
-                            TextSize = 12,
-                            TextXAlignment = Enum.TextXAlignment.Right,
-                            ZIndex = 102,
-                            Parent = container
-                        })
-                        
-                        local track = U:New("Frame", {
-                            BackgroundColor3 = Library.Theme.FG,
-                            BackgroundTransparency = 0.3,
-                            Position = UDim2.new(0, 40, 0.5, -3),
-                            Size = UDim2.new(1, -80, 0, 6),
-                            ZIndex = 101,
-                            Parent = container
-                        })
-                        U:Corner(track, 3)
-                        
-                        local fill = U:New("Frame", {
-                            BackgroundColor3 = color,
-                            Size = UDim2.new(value / max, 0, 1, 0),
-                            ZIndex = 102,
-                            Parent = track
-                        })
-                        U:Corner(fill, 3)
-                        
-                        local dragging = false
-                        track.InputBegan:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                dragging = true
-                            end
-                        end)
-                        
-                        UIS.InputEnded:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                dragging = false
-                            end
-                        end)
-                        
-                        UIS.InputChanged:Connect(function(input)
-                            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                                local pos = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
-                                pos = math.clamp(pos, 0, 1)
-                                local val = math.floor(pos * max)
-                                valueLabel.Text = tostring(val)
-                                fill.Size = UDim2.new(pos, 0, 1, 0)
-                                callback(val)
-                            end
-                        end)
-                    end
-                    
-                    createSlider("R:", r, 255, Color3.fromRGB(255, 100, 100), function(val)
-                        local newColor = Color3.fromRGB(val, ColorPicker.Value.G * 255, ColorPicker.Value.B * 255)
-                        ColorPicker:Set(newColor)
-                    end)
-                    
-                    createSlider("G:", g, 255, Color3.fromRGB(100, 255, 100), function(val)
-                        local newColor = Color3.fromRGB(ColorPicker.Value.R * 255, val, ColorPicker.Value.B * 255)
-                        ColorPicker:Set(newColor)
-                    end)
-                    
-                    createSlider("B:", b, 255, Color3.fromRGB(100, 100, 255), function(val)
-                        local newColor = Color3.fromRGB(ColorPicker.Value.R * 255, ColorPicker.Value.G * 255, val)
-                        ColorPicker:Set(newColor)
-                    end)
-                    
-                    -- Hex Input
-                    local hexContainer = U:New("Frame", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 30),
-                        ZIndex = 101,
-                        Parent = ColorPicker.PickerMenu
-                    })
-                    
-                    local hexLabel = U:New("TextLabel", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(0, 40, 1, 0),
-                        Font = Library:GetFont(true),
-                        Text = "HEX:",
-                        TextColor3 = Library.Theme.Text,
-                        TextSize = 13,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        ZIndex = 102,
-                        Parent = hexContainer
-                    })
-                    
-                    local hexInput = U:New("TextBox", {
-                        BackgroundColor3 = Library.Theme.FG,
-                        BackgroundTransparency = 0.3,
-                        Position = UDim2.new(0, 45, 0, 0),
-                        Size = UDim2.new(1, -50, 1, 0),
-                        Font = Library:GetFont(false),
-                        Text = colorToHex(ColorPicker.Value),
-                        TextColor3 = Library.Theme.TextSub,
-                        TextSize = 12,
-                        ZIndex = 102,
-                        Parent = hexContainer
-                    })
-                    U:Corner(hexInput, 6)
-                    
-                    hexInput.FocusLost:Connect(function()
-                        local newColor = hexToColor(hexInput.Text)
-                        if newColor then
-                            ColorPicker:Set(newColor)
-                            buildPickerMenu() -- Refresh sliders
-                        end
-                    end)
-                    
-                    -- Update size and position
-                    local contentHeight = layout.AbsoluteContentSize.Y + 20
-                    local displayPos = ColorPicker.Display.AbsolutePosition
-                    local displaySize = ColorPicker.Display.AbsoluteSize
-                    
-                    ColorPicker.PickerMenu.Size = UDim2.new(0, 250, 0, contentHeight)
-                    ColorPicker.PickerMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
-                end
+                -- SV Canvas dragging
+                local draggingSV = false
+                local draggingHue = false
                 
-                -- Build Copy/Paste Menu
-                local function buildCopyPasteMenu()
-                    for _, child in ipairs(ColorPicker.CopyPasteMenu:GetChildren()) do
-                        if not child:IsA("UICorner") and not child:IsA("UIStroke") then
-                            child:Destroy()
+                SVCanvas.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        draggingSV = true
+                    end
+                end)
+                
+                HueBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        draggingHue = true
+                    end
+                end)
+                
+                -- Un seul handler pour InputEnded
+                UIS.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        draggingSV = false
+                        draggingHue = false
+                    end
+                end)
+                
+                -- Un seul handler pour InputChanged
+                UIS.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                        if draggingSV then
+                            local posX = math.clamp((input.Position.X - SVCanvas.AbsolutePosition.X) / SVCanvas.AbsoluteSize.X, 0, 1)
+                            local posY = math.clamp((input.Position.Y - SVCanvas.AbsolutePosition.Y) / SVCanvas.AbsoluteSize.Y, 0, 1)
+                            
+                            ColorPicker.Sat = posX
+                            ColorPicker.Val = 1 - posY
+                            
+                            SVCursor.Position = UDim2.new(posX, 0, posY, 0)
+                            ColorPicker:UpdateColor()
+                        elseif draggingHue then
+                            local posY = math.clamp((input.Position.Y - HueBar.AbsolutePosition.Y) / HueBar.AbsoluteSize.Y, 0, 1)
+                            
+                            ColorPicker.Hue = posY
+                            HueCursor.Position = UDim2.new(0.5, 0, posY, 0)
+                            ColorPicker:UpdateColor()
                         end
                     end
-                    
-                    local copyBtn = U:New("TextButton", {
-                        BackgroundColor3 = Library.Theme.Success,
-                        BackgroundTransparency = 0.2,
-                        Position = UDim2.new(0, 10, 0, 10),
-                        Size = UDim2.new(1, -20, 0, 28),
-                        Font = Library:GetFont(true),
-                        Text = "📋 Copy Color",
-                        TextColor3 = Library.Theme.Text,
-                        TextSize = 13,
-                        ZIndex = 101,
-                        Parent = ColorPicker.CopyPasteMenu
-                    })
-                    U:Corner(copyBtn, 8)
-                    U:Ripple(copyBtn)
-                    
-                    copyBtn.MouseButton1Click:Connect(function()
-                        _G.CopiedColor = ColorPicker.Value
-                        ColorPicker.CopiedColor = ColorPicker.Value
-                        ColorPicker.CopyPasteMenu.Visible = false
-                        if Library.Notify then
-                            Library:Notify({
-                                Title = "Color Copied!",
-                                Content = colorToHex(ColorPicker.Value),
-                                Duration = 2
-                            })
-                        end
-                    end)
-                    
-                    local pasteBtn = U:New("TextButton", {
-                        BackgroundColor3 = Library.Theme.Warning,
-                        BackgroundTransparency = 0.2,
-                        Position = UDim2.new(0, 10, 0, 42),
-                        Size = UDim2.new(1, -20, 0, 28),
-                        Font = Library:GetFont(true),
-                        Text = "📌 Paste Color",
-                        TextColor3 = Library.Theme.Text,
-                        TextSize = 13,
-                        ZIndex = 101,
-                        Parent = ColorPicker.CopyPasteMenu
-                    })
-                    U:Corner(pasteBtn, 8)
-                    U:Ripple(pasteBtn)
-                    
-                    pasteBtn.MouseButton1Click:Connect(function()
-                        local copied = _G.CopiedColor or ColorPicker.CopiedColor
-                        if copied then
-                            ColorPicker:Set(copied)
-                            ColorPicker.CopyPasteMenu.Visible = false
-                            if Library.Notify then
-                                Library:Notify({
-                                    Title = "Color Pasted!",
-                                    Content = colorToHex(copied),
-                                    Duration = 2
-                                })
-                            end
-                        end
-                    end)
-                end
+                end)
                 
-                -- Left Click: Random Color
+                -- Hex Input
+                HexInput.FocusLost:Connect(function()
+                    local newColor = hexToColor(HexInput.Text)
+                    if newColor then
+                        ColorPicker.Value = newColor
+                        ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Val = newColor:ToHSV()
+                        SVCursor.Position = UDim2.new(ColorPicker.Sat, 0, 1 - ColorPicker.Val, 0)
+                        HueCursor.Position = UDim2.new(0.5, 0, ColorPicker.Hue, 0)
+                        ColorPicker:UpdateColor()
+                    end
+                end)
+                
+                -- Copy Button
+                CopyBtn.MouseButton1Click:Connect(function()
+                    _G.CopiedColor = ColorPicker.Value
+                end)
+                
+                -- Paste Button
+                PasteBtn.MouseButton1Click:Connect(function()
+                    if _G.CopiedColor then
+                        ColorPicker.Value = _G.CopiedColor
+                        ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Val = _G.CopiedColor:ToHSV()
+                        SVCursor.Position = UDim2.new(ColorPicker.Sat, 0, 1 - ColorPicker.Val, 0)
+                        HueCursor.Position = UDim2.new(0.5, 0, ColorPicker.Hue, 0)
+                        ColorPicker:UpdateColor()
+                    end
+                end)
+                
+                -- Left Click Display: Random Color
                 ColorPicker.Display.MouseButton1Click:Connect(function()
                     local newColor = Color3.fromHSV(math.random(), 0.7 + math.random() * 0.3, 0.8 + math.random() * 0.2)
-                    ColorPicker:Set(newColor)
+                    ColorPicker.Value = newColor
+                    ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Val = newColor:ToHSV()
+                    SVCursor.Position = UDim2.new(ColorPicker.Sat, 0, 1 - ColorPicker.Val, 0)
+                    HueCursor.Position = UDim2.new(0.5, 0, ColorPicker.Hue, 0)
+                    ColorPicker:UpdateColor()
                 end)
                 
-                -- Right Click: RGB/HSV Picker
+                -- Right Click Display: Open Picker
                 ColorPicker.Display.MouseButton2Click:Connect(function()
-                    -- Fermer tous les autres menus
                     Library:CloseAllMenus()
-                    
-                    ColorPicker.CopyPasteMenu.Visible = false
                     ColorPicker.PickerMenu.Visible = not ColorPicker.PickerMenu.Visible
                     if ColorPicker.PickerMenu.Visible then
-                        buildPickerMenu()
-                        -- S'enregistrer
-                        table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
-                    end
-                end)
-                
-                -- Middle Click: Copy/Paste
-                UIS.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton3 then
-                        local mouse = UIS:GetMouseLocation()
                         local displayPos = ColorPicker.Display.AbsolutePosition
                         local displaySize = ColorPicker.Display.AbsoluteSize
-                        
-                        if mouse.X >= displayPos.X and mouse.X <= displayPos.X + displaySize.X and
-                           mouse.Y >= displayPos.Y and mouse.Y <= displayPos.Y + displaySize.Y then
-                            -- Fermer tous les autres menus
-                            Library:CloseAllMenus()
-                            
-                            ColorPicker.PickerMenu.Visible = false
-                            ColorPicker.CopyPasteMenu.Visible = not ColorPicker.CopyPasteMenu.Visible
-                            if ColorPicker.CopyPasteMenu.Visible then
-                                -- Position le menu
-                                ColorPicker.CopyPasteMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
-                                buildCopyPasteMenu()
-                                -- S'enregistrer
-                                table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
-                            end
-                        end
+                        ColorPicker.PickerMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
+                        table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
                     end
                 end)
                 
