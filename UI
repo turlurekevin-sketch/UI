@@ -507,7 +507,9 @@ function Library:CreateWindow(config)
         Tabs = {},
         CurrentTab = nil,
         Minimized = false,
-        SettingsTab = nil
+        SettingsTab = nil,
+        ToggleKey = "RightShift",
+        Visible = true
     }
     
     -- ScreenGui
@@ -666,6 +668,20 @@ function Library:CreateWindow(config)
     
     -- Draggable
     U:Drag(Window.Main, Window.Header)
+    
+    -- Toggle UI with keybind
+    function Window:Toggle()
+        self.Visible = not self.Visible
+        self.GUI.Enabled = self.Visible
+    end
+    
+    -- Keybind listener
+    UIS.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode.Name == Window.ToggleKey then
+            Window:Toggle()
+        end
+    end)
     
     -- CRÉER LE TAB SETTINGS AUTOMATIQUEMENT
     task.spawn(function()
@@ -894,6 +910,18 @@ function Library:CreateWindow(config)
         
         AppearanceSection:CreateLabel({ Text = "Tip: Drag sections by their title to move them!" })
         
+        local ControlSection = Window.SettingsTab:CreateSection("🎮 Controls")
+        
+        ControlSection:CreateKeybind({
+            Name = "Toggle UI",
+            Default = "RightShift",
+            Callback = function(key)
+                Window.ToggleKey = key
+            end
+        })
+        
+        ControlSection:CreateLabel({ Text = "Press the key to show/hide the UI" })
+        
         local TextSection = Window.SettingsTab:CreateSection("📝 Text Colors")
         
         TextSection:CreateLabel({ Text = "Customize text colors:" })
@@ -1052,8 +1080,8 @@ function Library:CreateWindow(config)
             
             Section.Title = U:New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -20, 0, 32),
-                Position = UDim2.new(0, 10, 0, 8),
+                Size = UDim2.new(1, -20, 0, 28),
+                Position = UDim2.new(0, 10, 0, 10),
                 Font = Library.Config.FontBold,
                 Text = Section.Name,
                 TextColor3 = Library.Theme.Text,
@@ -1071,7 +1099,7 @@ function Library:CreateWindow(config)
             
             Section.ElementContainer = U:New("Frame", {
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 10, 0, 45),
+                Position = UDim2.new(0, 10, 0, 48),
                 Size = UDim2.new(1, -20, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
                 ZIndex = 4,
@@ -1081,6 +1109,12 @@ function Library:CreateWindow(config)
             U:New("UIListLayout", {
                 SortOrder = Enum.SortOrder.LayoutOrder,
                 Padding = UDim.new(0, 10),
+                Parent = Section.ElementContainer
+            })
+            
+            -- Padding pour donner de l'espace en bas
+            U:New("UIPadding", {
+                PaddingBottom = UDim.new(0, 10),
                 Parent = Section.ElementContainer
             })
             
@@ -1191,7 +1225,7 @@ function Library:CreateWindow(config)
                 return Toggle
             end
             
-            -- SLIDER
+            -- SLIDER (ULTRA STYLÉ avec Handle + Input)
             function Section:CreateSlider(config)
                 config = config or {}
                 
@@ -1208,7 +1242,7 @@ function Library:CreateWindow(config)
                 Slider.Frame = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.5,
-                    Size = UDim2.new(1, 0, 0, 50),
+                    Size = UDim2.new(1, 0, 0, 65),
                     ZIndex = 5,
                     Parent = self.ElementContainer
                 })
@@ -1216,8 +1250,8 @@ function Library:CreateWindow(config)
                 
                 Slider.Label = U:New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 12, 0, 5),
-                    Size = UDim2.new(1, -24, 0, 18),
+                    Position = UDim2.new(0, 12, 0, 8),
+                    Size = UDim2.new(1, -90, 0, 18),
                     Font = Library:GetFont(false),
                     Text = Slider.Name,
                     TextColor3 = Library.Theme.Text,
@@ -1227,62 +1261,151 @@ function Library:CreateWindow(config)
                     Parent = Slider.Frame
                 })
                 
-                Slider.ValueLabel = U:New("TextLabel", {
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(1, -60, 0, 5),
-                    Size = UDim2.new(0, 50, 0, 18),
+                -- Input box pour entrer valeur manuellement
+                Slider.ValueInput = U:New("TextBox", {
+                    BackgroundColor3 = Library.Theme.FG,
+                    BackgroundTransparency = 0.2,
+                    Position = UDim2.new(1, -70, 0, 6),
+                    Size = UDim2.new(0, 60, 0, 22),
                     Font = Library:GetFont(true),
                     Text = tostring(Slider.Value),
                     TextColor3 = Library.Theme.Primary,
-                    TextSize = 14,
-                    TextXAlignment = Enum.TextXAlignment.Right,
+                    TextSize = 13,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    ClearTextOnFocus = false,
                     ZIndex = 6,
                     Parent = Slider.Frame
                 })
+                U:Corner(Slider.ValueInput, 6)
+                U:Stroke(Slider.ValueInput, Library.Theme.Primary, 1, 0.5)
                 
+                Slider.ValueInput.FocusLost:Connect(function()
+                    local value = tonumber(Slider.ValueInput.Text)
+                    if value then
+                        Slider:Set(value)
+                    else
+                        Slider.ValueInput.Text = tostring(Slider.Value)
+                    end
+                end)
+                
+                -- Track (barre de fond)
                 Slider.Track = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.FG,
-                    BackgroundTransparency = 0.3,
-                    Position = UDim2.new(0, 12, 1, -18),
-                    Size = UDim2.new(1, -24, 0, 6),
+                    BackgroundTransparency = 0.4,
+                    Position = UDim2.new(0, 12, 0, 38),
+                    Size = UDim2.new(1, -24, 0, 8),
                     ZIndex = 6,
                     Parent = Slider.Frame
                 })
-                U:Corner(Slider.Track, 3)
+                U:Corner(Slider.Track, 4)
                 
+                -- Fill (barre de progression avec gradient)
                 Slider.Fill = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Primary,
                     Size = UDim2.new((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0),
                     ZIndex = 7,
                     Parent = Slider.Track
                 })
-                U:Corner(Slider.Fill, 3)
+                U:Corner(Slider.Fill, 4)
                 U:Gradient(Slider.Fill, Library.Theme.Primary, Library.Theme.Secondary)
                 
+                -- Handle (poignée ronde)
+                local handlePos = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
+                Slider.Handle = U:New("Frame", {
+                    BackgroundColor3 = Library.Theme.Primary,
+                    BackgroundTransparency = 0,
+                    Position = UDim2.new(handlePos, -8, 0.5, -8),
+                    Size = UDim2.new(0, 16, 0, 16),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    ZIndex = 8,
+                    Parent = Slider.Track
+                })
+                U:Corner(Slider.Handle, 8)
+                U:Glow(Slider.Handle, Library.Theme.Primary)
+                
+                -- Inner glow sur le handle
+                local handleInner = U:New("Frame", {
+                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    BackgroundTransparency = 0.5,
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    Size = UDim2.new(0, 8, 0, 8),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    ZIndex = 9,
+                    Parent = Slider.Handle
+                })
+                U:Corner(handleInner, 4)
+                
                 local dragging = false
+                local hovering = false
                 
                 function Slider:Set(value)
                     value = math.clamp(value, self.Min, self.Max)
                     value = math.floor(value / self.Increment + 0.5) * self.Increment
                     self.Value = value
                     
-                    self.ValueLabel.Text = tostring(value)
+                    local pos = (value - self.Min) / (self.Max - self.Min)
+                    
+                    self.ValueInput.Text = tostring(value)
+                    
                     U:Tween(self.Fill, {
-                        Size = UDim2.new((value - self.Min) / (self.Max - self.Min), 0, 1, 0)
-                    }, 0.15)
+                        Size = UDim2.new(pos, 0, 1, 0)
+                    }, 0.15, Enum.EasingStyle.Quint)
+                    
+                    U:Tween(self.Handle, {
+                        Position = UDim2.new(pos, -8, 0.5, -8)
+                    }, 0.15, Enum.EasingStyle.Quint)
                     
                     self.Callback(value)
                 end
                 
+                -- Hover effect sur handle
+                Slider.Handle.MouseEnter:Connect(function()
+                    hovering = true
+                    U:Tween(Slider.Handle, {
+                        Size = UDim2.new(0, 20, 0, 20)
+                    }, 0.2, Enum.EasingStyle.Quad)
+                end)
+                
+                Slider.Handle.MouseLeave:Connect(function()
+                    if not dragging then
+                        hovering = false
+                        U:Tween(Slider.Handle, {
+                            Size = UDim2.new(0, 16, 0, 16)
+                        }, 0.2, Enum.EasingStyle.Quad)
+                    end
+                end)
+                
+                -- Dragging
                 Slider.Track.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         dragging = true
+                        U:Tween(Slider.Handle, {
+                            Size = UDim2.new(0, 22, 0, 22)
+                        }, 0.1, Enum.EasingStyle.Quad)
+                    end
+                end)
+                
+                Slider.Handle.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = true
+                        U:Tween(Slider.Handle, {
+                            Size = UDim2.new(0, 22, 0, 22)
+                        }, 0.1, Enum.EasingStyle.Quad)
                     end
                 end)
                 
                 UIS.InputEnded:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         dragging = false
+                        if not hovering then
+                            U:Tween(Slider.Handle, {
+                                Size = UDim2.new(0, 16, 0, 16)
+                            }, 0.2, Enum.EasingStyle.Quad)
+                        else
+                            U:Tween(Slider.Handle, {
+                                Size = UDim2.new(0, 20, 0, 20)
+                            }, 0.2, Enum.EasingStyle.Quad)
+                        end
                     end
                 end)
                 
@@ -1295,10 +1418,37 @@ function Library:CreateWindow(config)
                     end
                 end)
                 
+                -- Min/Max labels
+                local minLabel = U:New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 12, 1, -16),
+                    Size = UDim2.new(0, 30, 0, 12),
+                    Font = Library:GetFont(false),
+                    Text = tostring(Slider.Min),
+                    TextColor3 = Library.Theme.TextDim,
+                    TextSize = 10,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 6,
+                    Parent = Slider.Frame
+                })
+                
+                local maxLabel = U:New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(1, -42, 1, -16),
+                    Size = UDim2.new(0, 30, 0, 12),
+                    Font = Library:GetFont(false),
+                    Text = tostring(Slider.Max),
+                    TextColor3 = Library.Theme.TextDim,
+                    TextSize = 10,
+                    TextXAlignment = Enum.TextXAlignment.Right,
+                    ZIndex = 6,
+                    Parent = Slider.Frame
+                })
+                
                 return Slider
             end
             
-            -- DROPDOWN
+            -- DROPDOWN (CORRIGÉ - Menu flottant)
             function Section:CreateDropdown(config)
                 config = config or {}
                 
@@ -1314,7 +1464,7 @@ function Library:CreateWindow(config)
                 Dropdown.Frame = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.5,
-                    Size = UDim2.new(1, 0, 0, 40),
+                    Size = UDim2.new(1, 0, 0, 60),
                     ZIndex = 5,
                     Parent = self.ElementContainer
                 })
@@ -1322,8 +1472,8 @@ function Library:CreateWindow(config)
                 
                 Dropdown.Label = U:New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 12, 0, 0),
-                    Size = UDim2.new(1, -24, 0, 20),
+                    Position = UDim2.new(0, 12, 0, 5),
+                    Size = UDim2.new(1, -24, 0, 18),
                     Font = Library:GetFont(false),
                     Text = Dropdown.Name,
                     TextColor3 = Library.Theme.Text,
@@ -1336,8 +1486,8 @@ function Library:CreateWindow(config)
                 Dropdown.Button = U:New("TextButton", {
                     BackgroundColor3 = Library.Theme.FG,
                     BackgroundTransparency = 0.3,
-                    Position = UDim2.new(0, 12, 0, 22),
-                    Size = UDim2.new(1, -24, 0, 32),
+                    Position = UDim2.new(0, 12, 0, 26),
+                    Size = UDim2.new(1, -24, 0, 30),
                     Font = Library:GetFont(false),
                     Text = "  " .. Dropdown.Value .. "  ▼",
                     TextColor3 = Library.Theme.TextSub,
@@ -1347,30 +1497,45 @@ function Library:CreateWindow(config)
                     Parent = Dropdown.Frame
                 })
                 U:Corner(Dropdown.Button, 8)
+                U:Ripple(Dropdown.Button)
+                U:Hover(Dropdown.Button)
                 
-                Dropdown.List = U:New("Frame", {
-                    BackgroundColor3 = Library.Theme.Panel,
-                    BackgroundTransparency = 0.1,
-                    Position = UDim2.new(0, 12, 0, 56),
-                    Size = UDim2.new(1, -24, 0, 0),
+                -- Menu flottant séparé (high ZIndex)
+                Dropdown.ListContainer = U:New("Frame", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 0),
+                    Position = UDim2.new(0, 0, 1, 2),
                     Visible = false,
-                    ZIndex = 10,
+                    ZIndex = 500,
                     Parent = Dropdown.Frame
                 })
+                
+                Dropdown.List = U:New("ScrollingFrame", {
+                    BackgroundColor3 = Library.Theme.Panel,
+                    BackgroundTransparency = 0.05,
+                    Position = UDim2.new(0, 12, 0, 0),
+                    Size = UDim2.new(1, -24, 0, 0),
+                    CanvasSize = UDim2.new(0, 0, 0, 0),
+                    ScrollBarThickness = 4,
+                    ScrollBarImageColor3 = Library.Theme.Primary,
+                    BorderSizePixel = 0,
+                    ZIndex = 501,
+                    Parent = Dropdown.ListContainer
+                })
                 U:Corner(Dropdown.List, 8)
-                U:Stroke(Dropdown.List, Library.Theme.Border, 1, 0.5)
+                U:Stroke(Dropdown.List, Library.Theme.Primary, 2, 0.7)
                 
                 local listLayout = U:New("UIListLayout", {
                     SortOrder = Enum.SortOrder.LayoutOrder,
-                    Padding = UDim.new(0, 2),
+                    Padding = UDim.new(0, 3),
                     Parent = Dropdown.List
                 })
                 
                 U:New("UIPadding", {
-                    PaddingLeft = UDim.new(0, 6),
-                    PaddingRight = UDim.new(0, 6),
-                    PaddingTop = UDim.new(0, 6),
-                    PaddingBottom = UDim.new(0, 6),
+                    PaddingLeft = UDim.new(0, 8),
+                    PaddingRight = UDim.new(0, 8),
+                    PaddingTop = UDim.new(0, 8),
+                    PaddingBottom = UDim.new(0, 8),
                     Parent = Dropdown.List
                 })
                 
@@ -1382,39 +1547,69 @@ function Library:CreateWindow(config)
                 
                 function Dropdown:Toggle()
                     self.Open = not self.Open
-                    Dropdown.List.Visible = self.Open
+                    Dropdown.ListContainer.Visible = self.Open
                     
                     if self.Open then
+                        local maxHeight = math.min(#self.Options * 33 + 16, 180)
+                        Dropdown.List.Size = UDim2.new(1, -24, 0, maxHeight)
+                        Dropdown.List.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 16)
+                        
+                        -- Animation d'apparition
+                        Dropdown.List.Size = UDim2.new(1, -24, 0, 0)
                         U:Tween(Dropdown.List, {
-                            Size = UDim2.new(1, -24, 0, math.min(#self.Options * 32 + 12, 150))
-                        }, 0.2)
-                        U:Tween(Dropdown.Frame, {
-                            Size = UDim2.new(1, 0, 0, 40 + 16 + math.min(#self.Options * 32 + 12, 150))
-                        }, 0.2)
+                            Size = UDim2.new(1, -24, 0, maxHeight)
+                        }, 0.25, Enum.EasingStyle.Quint)
                     else
                         U:Tween(Dropdown.List, {
                             Size = UDim2.new(1, -24, 0, 0)
-                        }, 0.2)
-                        U:Tween(Dropdown.Frame, {
-                            Size = UDim2.new(1, 0, 0, 54)
-                        }, 0.2)
+                        }, 0.2, Enum.EasingStyle.Quint)
+                        
+                        task.delay(0.2, function()
+                            Dropdown.ListContainer.Visible = false
+                        end)
                     end
                 end
+                
+                -- Close dropdown when clicking outside
+                local function closeOnOutsideClick(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        if Dropdown.Open then
+                            local mousePos = UIS:GetMouseLocation()
+                            local buttonPos = Dropdown.Button.AbsolutePosition
+                            local buttonSize = Dropdown.Button.AbsoluteSize
+                            local listPos = Dropdown.List.AbsolutePosition
+                            local listSize = Dropdown.List.AbsoluteSize
+                            
+                            local inButton = mousePos.X >= buttonPos.X and mousePos.X <= buttonPos.X + buttonSize.X and
+                                           mousePos.Y >= buttonPos.Y and mousePos.Y <= buttonPos.Y + buttonSize.Y
+                            
+                            local inList = mousePos.X >= listPos.X and mousePos.X <= listPos.X + listSize.X and
+                                         mousePos.Y >= listPos.Y and mousePos.Y <= listPos.Y + listSize.Y
+                            
+                            if not inButton and not inList then
+                                Dropdown:Toggle()
+                            end
+                        end
+                    end
+                end
+                
+                UIS.InputBegan:Connect(closeOnOutsideClick)
                 
                 Dropdown.Button.MouseButton1Click:Connect(function()
                     Dropdown:Toggle()
                 end)
                 
-                for _, option in pairs(Dropdown.Options) do
+                for i, option in ipairs(Dropdown.Options) do
                     local optBtn = U:New("TextButton", {
                         BackgroundColor3 = Library.Theme.FG,
-                        BackgroundTransparency = 0.5,
-                        Size = UDim2.new(1, 0, 0, 28),
+                        BackgroundTransparency = 0.4,
+                        Size = UDim2.new(1, 0, 0, 30),
                         Font = Library:GetFont(false),
                         Text = option,
                         TextColor3 = Library.Theme.TextSub,
                         TextSize = 13,
-                        ZIndex = 11,
+                        LayoutOrder = i,
+                        ZIndex = 502,
                         Parent = Dropdown.List
                     })
                     U:Corner(optBtn, 6)
@@ -1427,10 +1622,15 @@ function Library:CreateWindow(config)
                     end)
                 end
                 
+                -- Update canvas size
+                listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    Dropdown.List.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 16)
+                end)
+                
                 return Dropdown
             end
             
-            -- COLORPICKER
+            -- COLORPICKER (ULTRA COMPLET)
             function Section:CreateColorPicker(config)
                 config = config or {}
                 
@@ -1438,7 +1638,8 @@ function Library:CreateWindow(config)
                     Name = config.Name or "Color Picker",
                     Default = config.Default or Color3.fromRGB(255, 255, 255),
                     Callback = config.Callback or function() end,
-                    Value = config.Default or Color3.fromRGB(255, 255, 255)
+                    Value = config.Default or Color3.fromRGB(255, 255, 255),
+                    CopiedColor = nil
                 }
                 
                 ColorPicker.Frame = U:New("Frame", {
@@ -1474,16 +1675,320 @@ function Library:CreateWindow(config)
                 U:Corner(ColorPicker.Display, 8)
                 U:Stroke(ColorPicker.Display, Library.Theme.Border, 2, 0.5)
                 
+                -- Picker Menu (RGB/HSV Sliders + Hex Input)
+                ColorPicker.PickerMenu = U:New("Frame", {
+                    BackgroundColor3 = Library.Theme.Panel,
+                    BackgroundTransparency = 0.05,
+                    Position = UDim2.new(0, 0, 1, 5),
+                    Size = UDim2.new(1, 0, 0, 0),
+                    Visible = false,
+                    ZIndex = 100,
+                    Parent = ColorPicker.Frame
+                })
+                U:Corner(ColorPicker.PickerMenu, 8)
+                U:Stroke(ColorPicker.PickerMenu, Library.Theme.Primary, 2, 0.8)
+                
+                -- Copy/Paste Menu (Middle Click)
+                ColorPicker.CopyPasteMenu = U:New("Frame", {
+                    BackgroundColor3 = Library.Theme.Panel,
+                    BackgroundTransparency = 0.05,
+                    Position = UDim2.new(0, 0, 1, 5),
+                    Size = UDim2.new(1, 0, 0, 80),
+                    Visible = false,
+                    ZIndex = 100,
+                    Parent = ColorPicker.Frame
+                })
+                U:Corner(ColorPicker.CopyPasteMenu, 8)
+                U:Stroke(ColorPicker.CopyPasteMenu, Library.Theme.Secondary, 2, 0.8)
+                
+                -- Helper to convert Color3 to Hex
+                local function colorToHex(color)
+                    return string.format("#%02X%02X%02X", 
+                        math.floor(color.R * 255),
+                        math.floor(color.G * 255),
+                        math.floor(color.B * 255)
+                    )
+                end
+                
+                -- Helper to convert Hex to Color3
+                local function hexToColor(hex)
+                    hex = hex:gsub("#", "")
+                    if #hex == 6 then
+                        local r = tonumber(hex:sub(1,2), 16) / 255
+                        local g = tonumber(hex:sub(3,4), 16) / 255
+                        local b = tonumber(hex:sub(5,6), 16) / 255
+                        return Color3.new(r, g, b)
+                    end
+                    return nil
+                end
+                
                 function ColorPicker:Set(color)
                     self.Value = color
                     self.Display.BackgroundColor3 = color
                     self.Callback(color)
                 end
                 
+                -- Build RGB/HSV Picker Menu
+                local function buildPickerMenu()
+                    for _, child in ipairs(ColorPicker.PickerMenu:GetChildren()) do
+                        if not child:IsA("UICorner") and not child:IsA("UIStroke") then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    local h, s, v = ColorPicker.Value:ToHSV()
+                    local r, g, b = math.floor(ColorPicker.Value.R * 255), math.floor(ColorPicker.Value.G * 255), math.floor(ColorPicker.Value.B * 255)
+                    
+                    local layout = U:New("UIListLayout", {
+                        Padding = UDim.new(0, 8),
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                        Parent = ColorPicker.PickerMenu
+                    })
+                    
+                    U:New("UIPadding", {
+                        PaddingTop = UDim.new(0, 10),
+                        PaddingBottom = UDim.new(0, 10),
+                        PaddingLeft = UDim.new(0, 10),
+                        PaddingRight = UDim.new(0, 10),
+                        Parent = ColorPicker.PickerMenu
+                    })
+                    
+                    -- RGB Sliders
+                    local function createSlider(name, value, max, color, callback)
+                        local container = U:New("Frame", {
+                            BackgroundTransparency = 1,
+                            Size = UDim2.new(1, 0, 0, 25),
+                            ZIndex = 101,
+                            Parent = ColorPicker.PickerMenu
+                        })
+                        
+                        local label = U:New("TextLabel", {
+                            BackgroundTransparency = 1,
+                            Size = UDim2.new(0, 30, 1, 0),
+                            Font = Library:GetFont(true),
+                            Text = name,
+                            TextColor3 = color,
+                            TextSize = 13,
+                            TextXAlignment = Enum.TextXAlignment.Left,
+                            ZIndex = 102,
+                            Parent = container
+                        })
+                        
+                        local valueLabel = U:New("TextLabel", {
+                            BackgroundTransparency = 1,
+                            Position = UDim2.new(1, -35, 0, 0),
+                            Size = UDim2.new(0, 35, 1, 0),
+                            Font = Library:GetFont(true),
+                            Text = tostring(value),
+                            TextColor3 = Library.Theme.TextSub,
+                            TextSize = 12,
+                            TextXAlignment = Enum.TextXAlignment.Right,
+                            ZIndex = 102,
+                            Parent = container
+                        })
+                        
+                        local track = U:New("Frame", {
+                            BackgroundColor3 = Library.Theme.FG,
+                            BackgroundTransparency = 0.3,
+                            Position = UDim2.new(0, 40, 0.5, -3),
+                            Size = UDim2.new(1, -80, 0, 6),
+                            ZIndex = 101,
+                            Parent = container
+                        })
+                        U:Corner(track, 3)
+                        
+                        local fill = U:New("Frame", {
+                            BackgroundColor3 = color,
+                            Size = UDim2.new(value / max, 0, 1, 0),
+                            ZIndex = 102,
+                            Parent = track
+                        })
+                        U:Corner(fill, 3)
+                        
+                        local dragging = false
+                        track.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                dragging = true
+                            end
+                        end)
+                        
+                        UIS.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                dragging = false
+                            end
+                        end)
+                        
+                        UIS.InputChanged:Connect(function(input)
+                            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                                local pos = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+                                pos = math.clamp(pos, 0, 1)
+                                local val = math.floor(pos * max)
+                                valueLabel.Text = tostring(val)
+                                fill.Size = UDim2.new(pos, 0, 1, 0)
+                                callback(val)
+                            end
+                        end)
+                    end
+                    
+                    createSlider("R:", r, 255, Color3.fromRGB(255, 100, 100), function(val)
+                        local newColor = Color3.fromRGB(val, ColorPicker.Value.G * 255, ColorPicker.Value.B * 255)
+                        ColorPicker:Set(newColor)
+                    end)
+                    
+                    createSlider("G:", g, 255, Color3.fromRGB(100, 255, 100), function(val)
+                        local newColor = Color3.fromRGB(ColorPicker.Value.R * 255, val, ColorPicker.Value.B * 255)
+                        ColorPicker:Set(newColor)
+                    end)
+                    
+                    createSlider("B:", b, 255, Color3.fromRGB(100, 100, 255), function(val)
+                        local newColor = Color3.fromRGB(ColorPicker.Value.R * 255, ColorPicker.Value.G * 255, val)
+                        ColorPicker:Set(newColor)
+                    end)
+                    
+                    -- Hex Input
+                    local hexContainer = U:New("Frame", {
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(1, 0, 0, 30),
+                        ZIndex = 101,
+                        Parent = ColorPicker.PickerMenu
+                    })
+                    
+                    local hexLabel = U:New("TextLabel", {
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(0, 40, 1, 0),
+                        Font = Library:GetFont(true),
+                        Text = "HEX:",
+                        TextColor3 = Library.Theme.Text,
+                        TextSize = 13,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 102,
+                        Parent = hexContainer
+                    })
+                    
+                    local hexInput = U:New("TextBox", {
+                        BackgroundColor3 = Library.Theme.FG,
+                        BackgroundTransparency = 0.3,
+                        Position = UDim2.new(0, 45, 0, 0),
+                        Size = UDim2.new(1, -50, 1, 0),
+                        Font = Library:GetFont(false),
+                        Text = colorToHex(ColorPicker.Value),
+                        TextColor3 = Library.Theme.TextSub,
+                        TextSize = 12,
+                        ZIndex = 102,
+                        Parent = hexContainer
+                    })
+                    U:Corner(hexInput, 6)
+                    
+                    hexInput.FocusLost:Connect(function()
+                        local newColor = hexToColor(hexInput.Text)
+                        if newColor then
+                            ColorPicker:Set(newColor)
+                            buildPickerMenu() -- Refresh sliders
+                        end
+                    end)
+                    
+                    -- Update size
+                    ColorPicker.PickerMenu.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 20)
+                end
+                
+                -- Build Copy/Paste Menu
+                local function buildCopyPasteMenu()
+                    for _, child in ipairs(ColorPicker.CopyPasteMenu:GetChildren()) do
+                        if not child:IsA("UICorner") and not child:IsA("UIStroke") then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    local copyBtn = U:New("TextButton", {
+                        BackgroundColor3 = Library.Theme.Success,
+                        BackgroundTransparency = 0.2,
+                        Position = UDim2.new(0, 10, 0, 10),
+                        Size = UDim2.new(1, -20, 0, 28),
+                        Font = Library:GetFont(true),
+                        Text = "📋 Copy Color",
+                        TextColor3 = Library.Theme.Text,
+                        TextSize = 13,
+                        ZIndex = 101,
+                        Parent = ColorPicker.CopyPasteMenu
+                    })
+                    U:Corner(copyBtn, 8)
+                    U:Ripple(copyBtn)
+                    
+                    copyBtn.MouseButton1Click:Connect(function()
+                        _G.CopiedColor = ColorPicker.Value
+                        ColorPicker.CopiedColor = ColorPicker.Value
+                        ColorPicker.CopyPasteMenu.Visible = false
+                        if Library.Notify then
+                            Library:Notify({
+                                Title = "Color Copied!",
+                                Content = colorToHex(ColorPicker.Value),
+                                Duration = 2
+                            })
+                        end
+                    end)
+                    
+                    local pasteBtn = U:New("TextButton", {
+                        BackgroundColor3 = Library.Theme.Warning,
+                        BackgroundTransparency = 0.2,
+                        Position = UDim2.new(0, 10, 0, 42),
+                        Size = UDim2.new(1, -20, 0, 28),
+                        Font = Library:GetFont(true),
+                        Text = "📌 Paste Color",
+                        TextColor3 = Library.Theme.Text,
+                        TextSize = 13,
+                        ZIndex = 101,
+                        Parent = ColorPicker.CopyPasteMenu
+                    })
+                    U:Corner(pasteBtn, 8)
+                    U:Ripple(pasteBtn)
+                    
+                    pasteBtn.MouseButton1Click:Connect(function()
+                        local copied = _G.CopiedColor or ColorPicker.CopiedColor
+                        if copied then
+                            ColorPicker:Set(copied)
+                            ColorPicker.CopyPasteMenu.Visible = false
+                            if Library.Notify then
+                                Library:Notify({
+                                    Title = "Color Pasted!",
+                                    Content = colorToHex(copied),
+                                    Duration = 2
+                                })
+                            end
+                        end
+                    end)
+                end
+                
+                -- Left Click: Random Color
                 ColorPicker.Display.MouseButton1Click:Connect(function()
-                    -- Simplified color picker (juste un changement aléatoire pour l'exemple)
-                    local newColor = Color3.fromHSV(math.random(), 1, 1)
+                    local newColor = Color3.fromHSV(math.random(), 0.7 + math.random() * 0.3, 0.8 + math.random() * 0.2)
                     ColorPicker:Set(newColor)
+                end)
+                
+                -- Right Click: RGB/HSV Picker
+                ColorPicker.Display.MouseButton2Click:Connect(function()
+                    ColorPicker.CopyPasteMenu.Visible = false
+                    ColorPicker.PickerMenu.Visible = not ColorPicker.PickerMenu.Visible
+                    if ColorPicker.PickerMenu.Visible then
+                        buildPickerMenu()
+                    end
+                end)
+                
+                -- Middle Click: Copy/Paste
+                UIS.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+                        local mouse = UIS:GetMouseLocation()
+                        local displayPos = ColorPicker.Display.AbsolutePosition
+                        local displaySize = ColorPicker.Display.AbsoluteSize
+                        
+                        if mouse.X >= displayPos.X and mouse.X <= displayPos.X + displaySize.X and
+                           mouse.Y >= displayPos.Y and mouse.Y <= displayPos.Y + displaySize.Y then
+                            ColorPicker.PickerMenu.Visible = false
+                            ColorPicker.CopyPasteMenu.Visible = not ColorPicker.CopyPasteMenu.Visible
+                            if ColorPicker.CopyPasteMenu.Visible then
+                                buildCopyPasteMenu()
+                            end
+                        end
+                    end
                 end)
                 
                 U:Ripple(ColorPicker.Display)
