@@ -623,7 +623,9 @@ function Library:CreateWindow(config)
     local Window = {
         Title = config.Title or "UI Library",
         Subtitle = config.Subtitle or "",
-        Size = config.Size or UDim2.new(0, 580, 0, 450),
+        Size = config.Size or UDim2.new(0, 850, 0, 600),
+        MinSize = UDim2.new(0, 600, 0, 400),
+        MaxSize = UDim2.new(0, 1200, 0, 800),
         Theme = config.Theme or "Dark",
         Tabs = {},
         CurrentTab = nil,
@@ -792,21 +794,70 @@ function Library:CreateWindow(config)
         Parent = Window.Main
     })
     
+    -- Resize handle en bas à droite
+    Window.ResizeHandle = U:New("TextButton", {
+        BackgroundColor3 = Library.Theme.Primary,
+        BackgroundTransparency = 0.3,
+        Position = UDim2.new(1, -25, 1, -25),
+        Size = UDim2.new(0, 20, 0, 20),
+        Text = "⇲",
+        Font = Enum.Font.GothamBold,
+        TextColor3 = Library.Theme.Text,
+        TextSize = 14,
+        ZIndex = 10,
+        Parent = Window.Main
+    })
+    U:Corner(Window.ResizeHandle, 6)
+    
+    -- Hover effect sur resize handle
+    Window.ResizeHandle.MouseEnter:Connect(function()
+        U:Tween(Window.ResizeHandle, { 
+            BackgroundTransparency = 0,
+            Size = UDim2.new(0, 24, 0, 24)
+        }, 0.2)
+    end)
+    
+    Window.ResizeHandle.MouseLeave:Connect(function()
+        U:Tween(Window.ResizeHandle, { 
+            BackgroundTransparency = 0.3,
+            Size = UDim2.new(0, 20, 0, 20)
+        }, 0.2)
+    end)
+    
+    -- Resize logic
+    local resizing = false
+    local resizeStart = nil
+    local startSize = nil
+    
+    Window.ResizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            resizeStart = input.Position
+            startSize = Window.Main.AbsoluteSize
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    resizing = false
+                end
+            end)
+        end
+    end)
+    
+    UIS.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - resizeStart
+            local newWidth = math.clamp(startSize.X + delta.X, Window.MinSize.X.Offset, Window.MaxSize.X.Offset)
+            local newHeight = math.clamp(startSize.Y + delta.Y, Window.MinSize.Y.Offset, Window.MaxSize.Y.Offset)
+            
+            Window.Size = UDim2.new(0, newWidth, 0, newHeight)
+            Window.Main.Size = Window.Size
+        end
+    end)
+    
     -- Draggable
     U:Drag(Window.Main, Window.Header)
     
-    -- Toggle UI with keybind
-    function Window:Toggle()
-        self.Visible = not self.Visible
-        self.GUI.Enabled = self.Visible
-        
-        -- Toggle blur aussi
-        if self.Visible then
-            U:Tween(self.Blur, { Size = Library.Config.BlurIntensity }, 0.3)
-        else
-            U:Tween(self.Blur, { Size = 0 }, 0.3)
-        end
-    end
+    -- Keybind listener for toggle
     
     -- Keybind listener
     UIS.InputBegan:Connect(function(input, gameProcessed)
