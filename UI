@@ -508,7 +508,7 @@ function Library:CreateWindow(config)
         CurrentTab = nil,
         Minimized = false,
         SettingsTab = nil,
-        ToggleKey = "RightShift",
+        ToggleKey = Enum.KeyCode.RightShift,
         Visible = true
     }
     
@@ -678,7 +678,7 @@ function Library:CreateWindow(config)
     -- Keybind listener
     UIS.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-        if input.KeyCode.Name == Window.ToggleKey then
+        if input.KeyCode == Window.ToggleKey then
             Window:Toggle()
         end
     end)
@@ -915,8 +915,14 @@ function Library:CreateWindow(config)
         ControlSection:CreateKeybind({
             Name = "Toggle UI",
             Default = "RightShift",
-            Callback = function(key)
-                Window.ToggleKey = key
+            Callback = function(keyName)
+                -- Convertir le nom en Enum.KeyCode
+                local success, keyCode = pcall(function()
+                    return Enum.KeyCode[keyName]
+                end)
+                if success and keyCode then
+                    Window.ToggleKey = keyCode
+                end
             end
         })
         
@@ -1448,7 +1454,7 @@ function Library:CreateWindow(config)
                 return Slider
             end
             
-            -- DROPDOWN (CORRIGÉ - Menu flottant)
+            -- DROPDOWN (CORRIGÉ - Menu dans ScreenGui séparé)
             function Section:CreateDropdown(config)
                 config = config or {}
                 
@@ -1500,27 +1506,25 @@ function Library:CreateWindow(config)
                 U:Ripple(Dropdown.Button)
                 U:Hover(Dropdown.Button)
                 
-                -- Menu flottant séparé (high ZIndex)
-                Dropdown.ListContainer = U:New("Frame", {
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 1, 2),
-                    Visible = false,
-                    ZIndex = 500,
-                    Parent = Dropdown.Frame
+                -- ScreenGui séparé pour le menu (au-dessus de tout)
+                Dropdown.MenuGui = U:New("ScreenGui", {
+                    Name = "DropdownMenu_" .. math.random(1000, 9999),
+                    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+                    DisplayOrder = 999,
+                    Parent = CoreGui
                 })
                 
                 Dropdown.List = U:New("ScrollingFrame", {
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.05,
-                    Position = UDim2.new(0, 12, 0, 0),
-                    Size = UDim2.new(1, -24, 0, 0),
+                    Size = UDim2.new(0, 0, 0, 0),
                     CanvasSize = UDim2.new(0, 0, 0, 0),
                     ScrollBarThickness = 4,
                     ScrollBarImageColor3 = Library.Theme.Primary,
                     BorderSizePixel = 0,
-                    ZIndex = 501,
-                    Parent = Dropdown.ListContainer
+                    Visible = false,
+                    ZIndex = 1000,
+                    Parent = Dropdown.MenuGui
                 })
                 U:Corner(Dropdown.List, 8)
                 U:Stroke(Dropdown.List, Library.Theme.Primary, 2, 0.7)
@@ -1547,26 +1551,28 @@ function Library:CreateWindow(config)
                 
                 function Dropdown:Toggle()
                     self.Open = not self.Open
-                    Dropdown.ListContainer.Visible = self.Open
+                    Dropdown.List.Visible = self.Open
                     
                     if self.Open then
+                        -- Calculer position absolue du bouton
+                        local btnPos = Dropdown.Button.AbsolutePosition
+                        local btnSize = Dropdown.Button.AbsoluteSize
+                        
                         local maxHeight = math.min(#self.Options * 33 + 16, 180)
-                        Dropdown.List.Size = UDim2.new(1, -24, 0, maxHeight)
+                        local width = btnSize.X
+                        
+                        Dropdown.List.Position = UDim2.new(0, btnPos.X, 0, btnPos.Y + btnSize.Y + 2)
+                        Dropdown.List.Size = UDim2.new(0, width, 0, 0)
                         Dropdown.List.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 16)
                         
                         -- Animation d'apparition
-                        Dropdown.List.Size = UDim2.new(1, -24, 0, 0)
                         U:Tween(Dropdown.List, {
-                            Size = UDim2.new(1, -24, 0, maxHeight)
+                            Size = UDim2.new(0, width, 0, maxHeight)
                         }, 0.25, Enum.EasingStyle.Quint)
                     else
                         U:Tween(Dropdown.List, {
-                            Size = UDim2.new(1, -24, 0, 0)
+                            Size = UDim2.new(0, Dropdown.List.AbsoluteSize.X, 0, 0)
                         }, 0.2, Enum.EasingStyle.Quint)
-                        
-                        task.delay(0.2, function()
-                            Dropdown.ListContainer.Visible = false
-                        end)
                     end
                 end
                 
@@ -1609,7 +1615,7 @@ function Library:CreateWindow(config)
                         TextColor3 = Library.Theme.TextSub,
                         TextSize = 13,
                         LayoutOrder = i,
-                        ZIndex = 502,
+                        ZIndex = 1001,
                         Parent = Dropdown.List
                     })
                     U:Corner(optBtn, 6)
