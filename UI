@@ -526,13 +526,13 @@ function Library:CreateWindow(config)
     })
     U:Tween(Window.Blur, { Size = Library.Config.BlurIntensity }, 0.5)
     
-    -- Main container
+    -- Main container (commence invisible pour éviter le glitch)
     Window.Main = U:New("Frame", {
         Name = "Main",
         BackgroundColor3 = Library.Theme.BG,
-        BackgroundTransparency = 1 - Library.Theme.BGAlpha,
+        BackgroundTransparency = 1,
         Position = UDim2.new(0.5, 0, 0.5, 0),
-        Size = UDim2.new(0, 0, 0, 0),
+        Size = Window.Size,
         AnchorPoint = Vector2.new(0.5, 0.5),
         ClipsDescendants = true,
         Parent = Window.GUI
@@ -550,8 +550,11 @@ function Library:CreateWindow(config)
     Window.CursorTrailConn = U:CursorTrail(Window.GUI)
     Window.CursorParticlesConn = U:CursorParticles(Window.GUI)
     
-    -- Animate open
-    U:Tween(Window.Main, { Size = Window.Size }, 0.6, Enum.EasingStyle.Back)
+    -- Fade in smooth (évite le glitch)
+    task.spawn(function()
+        task.wait(0.1)
+        U:Tween(Window.Main, { BackgroundTransparency = 1 - Library.Theme.BGAlpha }, 0.4)
+    end)
     
     -- Header
     Window.Header = U:New("Frame", {
@@ -673,6 +676,13 @@ function Library:CreateWindow(config)
     function Window:Toggle()
         self.Visible = not self.Visible
         self.GUI.Enabled = self.Visible
+        
+        -- Toggle blur aussi
+        if self.Visible then
+            U:Tween(self.Blur, { Size = Library.Config.BlurIntensity }, 0.3)
+        else
+            U:Tween(self.Blur, { Size = 0 }, 0.3)
+        end
     end
     
     -- Keybind listener
@@ -681,6 +691,161 @@ function Library:CreateWindow(config)
         if input.KeyCode == Window.ToggleKey then
             Window:Toggle()
         end
+    end)
+    
+    -- CRÉER LE TAB HOME AUTOMATIQUEMENT (en premier)
+    task.spawn(function()
+        task.wait(0.05)
+        Window.HomeTab = Window:CreateTab({ Name = "🏠 Home" })
+        
+        -- Section Profil
+        local ProfileSection = Window.HomeTab:CreateSection("👤 Profile")
+        
+        -- Créer un container custom pour le profil
+        local profileContainer = U:New("Frame", {
+            BackgroundColor3 = Library.Theme.FG,
+            BackgroundTransparency = 0.3,
+            Size = UDim2.new(1, 0, 0, 120),
+            ZIndex = 5,
+            Parent = ProfileSection.ElementContainer
+        })
+        U:Corner(profileContainer, 10)
+        U:Stroke(profileContainer, Library.Theme.Primary, 1, 0.5)
+        
+        -- Avatar (grande image)
+        local avatarImg = U:New("ImageLabel", {
+            BackgroundColor3 = Library.Theme.Panel,
+            BackgroundTransparency = 0.2,
+            Position = UDim2.new(0, 15, 0.5, -40),
+            Size = UDim2.new(0, 80, 0, 80),
+            Image = Players:GetUserThumbnailAsync(Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150),
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 6,
+            Parent = profileContainer
+        })
+        U:Corner(avatarImg, 40)
+        U:Stroke(avatarImg, Library.Theme.Primary, 2, 0.8)
+        U:Glow(avatarImg, Library.Theme.Primary)
+        
+        -- Username
+        local username = U:New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 105, 0, 15),
+            Size = UDim2.new(1, -115, 0, 25),
+            Font = Library:GetFont(true),
+            Text = "@" .. Player.Name,
+            TextColor3 = Library.Theme.Text,
+            TextSize = 16,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 6,
+            Parent = profileContainer
+        })
+        
+        -- Display Name
+        local displayName = U:New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 105, 0, 40),
+            Size = UDim2.new(1, -115, 0, 20),
+            Font = Library:GetFont(false),
+            Text = Player.DisplayName,
+            TextColor3 = Library.Theme.TextSub,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 6,
+            Parent = profileContainer
+        })
+        
+        -- Account Age
+        local accountAge = U:New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 105, 0, 65),
+            Size = UDim2.new(1, -115, 0, 18),
+            Font = Library:GetFont(false),
+            Text = "📅 Account: " .. Player.AccountAge .. " days old",
+            TextColor3 = Library.Theme.Primary,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 6,
+            Parent = profileContainer
+        })
+        
+        -- User ID
+        local userId = U:New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 105, 0, 85),
+            Size = UDim2.new(1, -115, 0, 18),
+            Font = Library:GetFont(false),
+            Text = "🆔 ID: " .. Player.UserId,
+            TextColor3 = Library.Theme.TextDim,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 6,
+            Parent = profileContainer
+        })
+        
+        -- Section Statistiques
+        local StatsSection = Window.HomeTab:CreateSection("📊 Statistics")
+        
+        -- Script Load Time
+        local loadTime = os.date("%H:%M:%S", os.time())
+        StatsSection:CreateLabel({ Text = "⏰ Loaded at: " .. loadTime })
+        
+        -- Current Game
+        local gameInfo = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+        StatsSection:CreateLabel({ Text = "🎮 Game: " .. gameInfo.Name })
+        
+        -- Players in server
+        StatsSection:CreateLabel({ Text = "👥 Players: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers })
+        
+        -- FPS Counter (mis à jour en temps réel)
+        local fpsLabel = StatsSection:CreateLabel({ Text = "📈 FPS: Calculating..." })
+        
+        task.spawn(function()
+            local lastUpdate = tick()
+            local frames = 0
+            
+            RS.RenderStepped:Connect(function()
+                frames = frames + 1
+                
+                if tick() - lastUpdate >= 1 then
+                    local fps = frames
+                    frames = 0
+                    lastUpdate = tick()
+                    
+                    fpsLabel:Set("📈 FPS: " .. fps)
+                end
+            end)
+        end)
+        
+        -- Ping (mis à jour en temps réel)
+        local pingLabel = StatsSection:CreateLabel({ Text = "📡 Ping: Calculating..." })
+        
+        task.spawn(function()
+            while wait(2) do
+                local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+                pingLabel:Set("📡 Ping: " .. ping .. "ms")
+            end
+        end)
+        
+        -- Section Info
+        local InfoSection = Window.HomeTab:CreateSection("ℹ️ Information")
+        
+        InfoSection:CreateLabel({ Text = "UI Library: Ultra Modern V2.0" })
+        InfoSection:CreateLabel({ Text = "Made with ❤️ for Roblox" })
+        InfoSection:CreateLabel({ Text = "Press RightShift to toggle UI" })
+        
+        -- Button pour copier User ID
+        InfoSection:CreateButton({
+            Name = "📋 Copy User ID",
+            Callback = function()
+                setclipboard(tostring(Player.UserId))
+                Library:Notify({
+                    Title = "Copied!",
+                    Content = "User ID copied to clipboard",
+                    Duration = 2
+                })
+            end
+        })
     end)
     
     -- CRÉER LE TAB SETTINGS AUTOMATIQUEMENT
@@ -1347,6 +1512,15 @@ function Library:CreateWindow(config)
                 function Slider:Set(value)
                     value = math.clamp(value, self.Min, self.Max)
                     value = math.floor(value / self.Increment + 0.5) * self.Increment
+                    
+                    -- Arrondir pour éviter les décimales infinies
+                    if self.Increment >= 1 then
+                        value = math.floor(value)
+                    else
+                        -- Limiter à 2 décimales max
+                        value = math.floor(value * 100 + 0.5) / 100
+                    end
+                    
                     self.Value = value
                     
                     local pos = (value - self.Min) / (self.Max - self.Min)
@@ -1681,28 +1855,42 @@ function Library:CreateWindow(config)
                 U:Corner(ColorPicker.Display, 8)
                 U:Stroke(ColorPicker.Display, Library.Theme.Border, 2, 0.5)
                 
-                -- Picker Menu (RGB/HSV Sliders + Hex Input)
+                -- Picker Menu (RGB/HSV Sliders + Hex Input) - ScreenGui séparé
+                ColorPicker.PickerMenuGui = U:New("ScreenGui", {
+                    Name = "ColorPickerMenu_" .. math.random(1000, 9999),
+                    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+                    DisplayOrder = 999,
+                    Parent = CoreGui
+                })
+                
                 ColorPicker.PickerMenu = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.05,
-                    Position = UDim2.new(0, 0, 1, 5),
-                    Size = UDim2.new(1, 0, 0, 0),
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(0, 0, 0, 0),
                     Visible = false,
-                    ZIndex = 100,
-                    Parent = ColorPicker.Frame
+                    ZIndex = 1000,
+                    Parent = ColorPicker.PickerMenuGui
                 })
                 U:Corner(ColorPicker.PickerMenu, 8)
                 U:Stroke(ColorPicker.PickerMenu, Library.Theme.Primary, 2, 0.8)
                 
-                -- Copy/Paste Menu (Middle Click)
+                -- Copy/Paste Menu (Middle Click) - ScreenGui séparé
+                ColorPicker.CopyPasteMenuGui = U:New("ScreenGui", {
+                    Name = "ColorCopyPasteMenu_" .. math.random(1000, 9999),
+                    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+                    DisplayOrder = 999,
+                    Parent = CoreGui
+                })
+                
                 ColorPicker.CopyPasteMenu = U:New("Frame", {
                     BackgroundColor3 = Library.Theme.Panel,
                     BackgroundTransparency = 0.05,
-                    Position = UDim2.new(0, 0, 1, 5),
-                    Size = UDim2.new(1, 0, 0, 80),
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(0, 250, 0, 80),
                     Visible = false,
-                    ZIndex = 100,
-                    Parent = ColorPicker.Frame
+                    ZIndex = 1000,
+                    Parent = ColorPicker.CopyPasteMenuGui
                 })
                 U:Corner(ColorPicker.CopyPasteMenu, 8)
                 U:Stroke(ColorPicker.CopyPasteMenu, Library.Theme.Secondary, 2, 0.8)
@@ -1893,8 +2081,13 @@ function Library:CreateWindow(config)
                         end
                     end)
                     
-                    -- Update size
-                    ColorPicker.PickerMenu.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 20)
+                    -- Update size and position
+                    local contentHeight = layout.AbsoluteContentSize.Y + 20
+                    local displayPos = ColorPicker.Display.AbsolutePosition
+                    local displaySize = ColorPicker.Display.AbsoluteSize
+                    
+                    ColorPicker.PickerMenu.Size = UDim2.new(0, 250, 0, contentHeight)
+                    ColorPicker.PickerMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
                 end
                 
                 -- Build Copy/Paste Menu
@@ -1991,6 +2184,8 @@ function Library:CreateWindow(config)
                             ColorPicker.PickerMenu.Visible = false
                             ColorPicker.CopyPasteMenu.Visible = not ColorPicker.CopyPasteMenu.Visible
                             if ColorPicker.CopyPasteMenu.Visible then
+                                -- Position le menu
+                                ColorPicker.CopyPasteMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
                                 buildCopyPasteMenu()
                             end
                         end
@@ -2183,6 +2378,9 @@ function Library:CreateWindow(config)
         
         -- Auto activate first tab
         if #self.Tabs == 1 then
+            Tab:Activate()
+        -- Si c'est le Home tab, l'activer même s'il y a déjà des tabs
+        elseif Tab.Name == "🏠 Home" then
             Tab:Activate()
         end
         
