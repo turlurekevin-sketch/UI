@@ -800,10 +800,10 @@ function Library:CreateWindow(config)
         BackgroundTransparency = 0.3,
         Position = UDim2.new(1, -25, 1, -25),
         Size = UDim2.new(0, 20, 0, 20),
-        Text = "⇲",
+        Text = "◢",
         Font = Enum.Font.GothamBold,
         TextColor3 = Library.Theme.Text,
-        TextSize = 14,
+        TextSize = 16,
         ZIndex = 10,
         Parent = Window.Main
     })
@@ -1449,10 +1449,14 @@ function Library:CreateWindow(config)
                 TextColor3 = Library.Theme.Text
             }, Library.Config.AnimSpeed)
             
-            -- Animation fade in pour les colonnes
-            for i, column in ipairs(self.Columns) do
-                column.GroupTransparency = 1
-                U:Tween(column, { GroupTransparency = 0 }, Library.Config.AnimSpeed * 1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+            -- Animation fade in pour les sections (pas les colonnes)
+            for _, section in ipairs(self.Sections) do
+                if section.Container then
+                    section.Container.BackgroundTransparency = 1
+                    U:Tween(section.Container, { 
+                        BackgroundTransparency = 1 - Library.Theme.PanelAlpha 
+                    }, Library.Config.AnimSpeed * 1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+                end
             end
         end
         
@@ -1477,8 +1481,18 @@ function Library:CreateWindow(config)
                 Elements = {}
             }
             
+            -- Vérifier que les colonnes existent
+            if not self.Columns or #self.Columns == 0 then
+                error("Erreur: Les colonnes du tab n'existent pas ! Tab: " .. tostring(self.Name))
+                return
+            end
+            
             -- Choisir la colonne (alterner entre 1, 2, 3)
             local targetColumn = self.Columns[self.CurrentColumn]
+            if not targetColumn then
+                error("Erreur: Colonne " .. tostring(self.CurrentColumn) .. " introuvable !")
+                return
+            end
             self.CurrentColumn = (self.CurrentColumn % 3) + 1
             
             Section.Container = U:New("Frame", {
