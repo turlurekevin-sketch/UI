@@ -32,7 +32,7 @@ local Player = Players.LocalPlayer
 Library.Config = {
     AnimSpeed = 0.25,
     CornerRadius = 14,
-    BlurIntensity = 16,
+    BlurIntensity = 8,  -- Réduit pour ne pas trop affecter l'UI Roblox
     ParticlesEnabled = true,
     GlowEnabled = true,
     RippleEnabled = true,
@@ -295,11 +295,11 @@ function U:Hover(button, normalColor, hoverColor)
     local hov = hoverColor or Library.Theme.Hover
     
     button.MouseEnter:Connect(function()
-        U:Tween(button, { BackgroundColor3 = hov }, 0.2, Enum.EasingStyle.Quad)
+        U:Tween(button, { BackgroundColor3 = hov }, Library.Config.AnimSpeed, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
     end)
     
     button.MouseLeave:Connect(function()
-        U:Tween(button, { BackgroundColor3 = norm }, 0.2, Enum.EasingStyle.Quad)
+        U:Tween(button, { BackgroundColor3 = norm }, Library.Config.AnimSpeed, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
     end)
 end
 
@@ -347,24 +347,77 @@ end
 function U:MakeSectionDraggable(sectionContainer, titleLabel)
     if not titleLabel then return end
     
-    titleLabel.Active = true
+    -- Ajouter un indicateur visuel de drag
+    local dragIcon = U:New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -25, 0, 0),
+        Size = UDim2.new(0, 20, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = "⋮⋮",
+        TextColor3 = Library.Theme.TextDim,
+        TextSize = 14,
+        TextTransparency = 0.5,
+        ZIndex = 5,
+        Parent = titleLabel
+    })
+    
     local isDragging = false
+    local dragClone = nil
     
     -- Visual feedback on hover
     titleLabel.MouseEnter:Connect(function()
         if not isDragging then
-            U:Tween(titleLabel, { TextColor3 = Library.Theme.Primary }, 0.2)
+            U:Tween(dragIcon, { TextTransparency = 0, TextColor3 = Library.Theme.Primary }, 0.2)
         end
     end)
     
     titleLabel.MouseLeave:Connect(function()
         if not isDragging then
-            U:Tween(titleLabel, { TextColor3 = Library.Theme.Text }, 0.2)
+            U:Tween(dragIcon, { TextTransparency = 0.5, TextColor3 = Library.Theme.TextDim }, 0.2)
         end
     end)
     
-    -- Drag logic
-    U:Drag(sectionContainer, titleLabel)
+    -- Drag logic - Créer un clone visuel
+    local dragging = false
+    local dragInput, startPos
+    
+    titleLabel.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            startPos = input.Position
+            
+            -- Créer un clone visuel
+            dragClone = sectionContainer:Clone()
+            dragClone.Parent = CoreGui
+            dragClone.Size = sectionContainer.AbsoluteSize
+            dragClone.Position = UDim2.new(0, sectionContainer.AbsolutePosition.X, 0, sectionContainer.AbsolutePosition.Y)
+            dragClone.ZIndex = 1000
+            
+            -- Réduire l'opacité de l'original
+            U:Tween(sectionContainer, { BackgroundTransparency = 0.7 }, 0.2)
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if dragClone then
+                        dragClone:Destroy()
+                        dragClone = nil
+                    end
+                    U:Tween(sectionContainer, { BackgroundTransparency = 1 - Library.Theme.PanelAlpha }, 0.2)
+                end
+            end)
+        end
+    end)
+    
+    UIS.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging and dragClone then
+            local delta = input.Position - startPos
+            dragClone.Position = UDim2.new(
+                0, sectionContainer.AbsolutePosition.X + delta.X,
+                0, sectionContainer.AbsolutePosition.Y + delta.Y
+            )
+        end
+    end)
 end
 
 function U:Particles(parent)
@@ -584,6 +637,8 @@ function Library:CreateWindow(config)
     Window.GUI = U:New("ScreenGui", {
         Name = "ModernUI_" .. math.random(1000, 9999),
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        IgnoreGuiInset = false,
+        ResetOnSpawn = false,
         Parent = CoreGui
     })
     
@@ -1258,7 +1313,7 @@ function Library:CreateWindow(config)
         })
         U:Corner(Tab.Button, 10)
         
-        -- Tab content
+        -- Tab content avec 3 colonnes
         Tab.Content = U:New("ScrollingFrame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, -20, 1, -20),
@@ -1272,11 +1327,37 @@ function Library:CreateWindow(config)
             Parent = self.ContentContainer
         })
         
-        U:New("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 12),
+        -- Container pour les 3 colonnes
+        Tab.ColumnsContainer = U:New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            ZIndex = 3,
             Parent = Tab.Content
         })
+        
+        -- Créer 3 colonnes
+        Tab.Columns = {}
+        for i = 1, 3 do
+            local column = U:New("Frame", {
+                BackgroundTransparency = 1,
+                Position = UDim2.new((i-1) / 3, (i-1) * 5, 0, 0),
+                Size = UDim2.new(1/3, -10, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                ZIndex = 3,
+                Parent = Tab.ColumnsContainer
+            })
+            
+            U:New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 12),
+                Parent = column
+            })
+            
+            table.insert(Tab.Columns, column)
+        end
+        
+        Tab.CurrentColumn = 1  -- Pour alterner entre les colonnes
         
         -- Activate tab
         function Tab:Activate()
@@ -1284,22 +1365,44 @@ function Library:CreateWindow(config)
             Library:CloseAllMenus()
             
             for _, tab in pairs(self.Window.Tabs) do
+                if tab.Active then
+                    -- Animation de sortie pour l'ancien tab
+                    U:Tween(tab.Content, { 
+                        Position = UDim2.new(0, -20, 0, 10),
+                        BackgroundTransparency = 1 
+                    }, Library.Config.AnimSpeed)
+                    task.wait(Library.Config.AnimSpeed)
+                    tab.Content.Visible = false
+                    tab.Content.Position = UDim2.new(0, 10, 0, 10)
+                end
+                
                 tab.Active = false
-                tab.Content.Visible = false
                 U:Tween(tab.Button, {
                     BackgroundTransparency = 0.7,
                     TextColor3 = Library.Theme.TextDim
-                }, 0.2)
+                }, Library.Config.AnimSpeed)
             end
             
             self.Active = true
             self.Content.Visible = true
             self.Window.CurrentTab = self
             
+            -- Animation d'entrée pour le nouveau tab
+            self.Content.Position = UDim2.new(0, 30, 0, 10)
+            U:Tween(self.Content, { 
+                Position = UDim2.new(0, 10, 0, 10)
+            }, Library.Config.AnimSpeed, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            
             U:Tween(self.Button, {
                 BackgroundTransparency = 0.2,
                 TextColor3 = Library.Theme.Text
-            }, 0.2)
+            }, Library.Config.AnimSpeed)
+            
+            -- Animation fade in pour les colonnes
+            for i, column in ipairs(self.Columns) do
+                column.GroupTransparency = 1
+                U:Tween(column, { GroupTransparency = 0 }, Library.Config.AnimSpeed * 1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+            end
         end
         
         Tab.Button.MouseButton1Click:Connect(function()
@@ -1323,16 +1426,28 @@ function Library:CreateWindow(config)
                 Elements = {}
             }
             
+            -- Choisir la colonne (alterner entre 1, 2, 3)
+            local targetColumn = self.Columns[self.CurrentColumn]
+            self.CurrentColumn = (self.CurrentColumn % 3) + 1
+            
             Section.Container = U:New("Frame", {
                 BackgroundColor3 = Library.Theme.Panel,
-                BackgroundTransparency = 1 - Library.Theme.PanelAlpha,
+                BackgroundTransparency = 1,  -- Commence invisible
                 Size = UDim2.new(1, 0, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y,
                 ZIndex = 3,
-                Parent = self.Content
+                Parent = targetColumn
             })
             U:Corner(Section.Container)
             U:Stroke(Section.Container, Library.Theme.Border, 1, Library.Theme.BorderAlpha)
+            
+            -- Animation d'apparition smooth
+            task.spawn(function()
+                task.wait(0.05)
+                U:Tween(Section.Container, { 
+                    BackgroundTransparency = 1 - Library.Theme.PanelAlpha 
+                }, Library.Config.AnimSpeed, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+            end)
             
             Section.Title = U:New("TextLabel", {
                 BackgroundTransparency = 1,
@@ -1463,16 +1578,17 @@ function Library:CreateWindow(config)
                     
                     U:Tween(self.Switch, {
                         BackgroundColor3 = value and Library.Theme.Success or Library.Theme.TextDim
-                    }, 0.2)
+                    }, Library.Config.AnimSpeed, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
                     
                     U:Tween(self.Knob, {
                         Position = value and UDim2.new(1, -20, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
-                    }, 0.2)
+                    }, Library.Config.AnimSpeed, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                     
                     self.Callback(value)
                 end
                 
                 Toggle.Switch.MouseButton1Click:Connect(function()
+                    Library:PlaySound("Toggle")
                     Toggle:Set(not Toggle.Value)
                 end)
                 
@@ -1827,17 +1943,17 @@ function Library:CreateWindow(config)
                         Dropdown.List.Size = UDim2.new(0, width, 0, 0)
                         Dropdown.List.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 16)
                         
-                        -- Animation d'apparition
+                        -- Animation d'apparition smooth
                         U:Tween(Dropdown.List, {
                             Size = UDim2.new(0, width, 0, maxHeight)
-                        }, 0.25, Enum.EasingStyle.Quint)
+                        }, Library.Config.AnimSpeed * 1.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                         
                         -- S'enregistrer
                         table.insert(Library.OpenMenus.Dropdowns, self)
                     else
                         U:Tween(Dropdown.List, {
                             Size = UDim2.new(0, Dropdown.List.AbsoluteSize.X, 0, 0)
-                        }, 0.2, Enum.EasingStyle.Quint)
+                        }, Library.Config.AnimSpeed, Enum.EasingStyle.Back, Enum.EasingDirection.In)
                         
                         -- Se désenregistrer
                         for i, dd in ipairs(Library.OpenMenus.Dropdowns) do
@@ -2295,7 +2411,36 @@ function Library:CreateWindow(config)
                         local displayPos = ColorPicker.Display.AbsolutePosition
                         local displaySize = ColorPicker.Display.AbsoluteSize
                         ColorPicker.PickerMenu.Position = UDim2.new(0, displayPos.X, 0, displayPos.Y + displaySize.Y + 5)
+                        
+                        -- Animation d'ouverture smooth
+                        ColorPicker.PickerMenu.Size = UDim2.new(0, 300, 0, 0)
+                        U:Tween(ColorPicker.PickerMenu, { Size = UDim2.new(0, 300, 0, 340) }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+                        
                         table.insert(Library.OpenMenus.ColorPickers, ColorPicker)
+                    end
+                end)
+                
+                -- Fermer quand on clique en dehors
+                UIS.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 and ColorPicker.PickerMenu.Visible then
+                        local mouse = UIS:GetMouseLocation()
+                        local menuPos = ColorPicker.PickerMenu.AbsolutePosition
+                        local menuSize = ColorPicker.PickerMenu.AbsoluteSize
+                        local displayPos = ColorPicker.Display.AbsolutePosition
+                        local displaySize = ColorPicker.Display.AbsoluteSize
+                        
+                        -- Vérifier si le clic est en dehors du menu ET du display button
+                        local outsideMenu = mouse.X < menuPos.X or mouse.X > menuPos.X + menuSize.X or
+                                           mouse.Y < menuPos.Y or mouse.Y > menuPos.Y + menuSize.Y
+                        local outsideDisplay = mouse.X < displayPos.X or mouse.X > displayPos.X + displaySize.X or
+                                              mouse.Y < displayPos.Y or mouse.Y > displayPos.Y + displaySize.Y
+                        
+                        if outsideMenu and outsideDisplay then
+                            -- Animation de fermeture smooth
+                            U:Tween(ColorPicker.PickerMenu, { Size = UDim2.new(0, 300, 0, 0) }, 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+                            task.wait(0.2)
+                            ColorPicker.PickerMenu.Visible = false
+                        end
                     end
                 end)
                 
@@ -2476,10 +2621,18 @@ function Library:CreateWindow(config)
             return Section
         end
         
-        -- Update canvas size
-        Tab.Content:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
-            Tab.Content.CanvasSize = UDim2.new(0, 0, 0, Tab.Content.UIListLayout.AbsoluteContentSize.Y + 20)
-        end)
+        -- Update canvas size based on columns height
+        for _, column in ipairs(Tab.Columns) do
+            column:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                local maxHeight = 0
+                for _, col in ipairs(Tab.Columns) do
+                    if col.AbsoluteSize.Y > maxHeight then
+                        maxHeight = col.AbsoluteSize.Y
+                    end
+                end
+                Tab.Content.CanvasSize = UDim2.new(0, 0, 0, maxHeight + 20)
+            end)
+        end
         
         table.insert(self.Tabs, Tab)
         
@@ -2497,11 +2650,15 @@ function Library:CreateWindow(config)
     end
     
     function Window:Toggle()
-        self.Minimized = not self.Minimized
-        if self.Minimized then
-            U:Tween(self.Main, { Size = UDim2.new(0, self.Size.X.Offset, 0, 55) }, 0.3)
+        self.Visible = not self.Visible
+        if not self.Visible then
+            -- Cacher complètement l'UI
+            self.GUI.Enabled = false
+            U:Tween(self.Blur, { Size = 0 }, 0.3)
         else
-            U:Tween(self.Main, { Size = self.Size }, 0.3)
+            -- Réafficher l'UI
+            self.GUI.Enabled = true
+            U:Tween(self.Blur, { Size = Library.Config.BlurIntensity }, 0.3)
         end
     end
     
