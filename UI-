@@ -751,13 +751,6 @@ local function AddSoftOrbs(parent, theme)
     return Container
 end
 
--- 🎵 Fonction helper pour ajouter hover avec son
-local function AddHoverSound(btn)
-    btn.MouseEnter:Connect(function()
-        PlaySound("Hover")
-    end)
-end
-
 local function CreateRipple(btn, color)
     btn.ClipsDescendants = true
     btn.MouseButton1Click:Connect(function()
@@ -1797,6 +1790,7 @@ function Library:CreateWindow(Settings)
     
     local hoverTweenSettings, leaveTweenSettings
     OpenSettingsBtn.MouseEnter:Connect(function()
+        PlaySound("Hover") -- 🔊 Son hover sur bouton settings
         if leaveTweenSettings then leaveTweenSettings:Cancel() end
         hoverTweenSettings = TS:Create(OpenSettingsBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2})
         hoverTweenSettings:Play()
@@ -1885,14 +1879,15 @@ function Library:CreateWindow(Settings)
         IsOpen = not IsOpen 
         if IsOpen then 
             PlaySound("Open") -- 🔊 Son d'ouverture
+            -- Ouverture instantanée
             WindowContainer.Visible = true 
-            TS:Create(WindowContainer, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = LastSize}):Play() 
-            TS:Create(Shadow1, TweenInfo.new(0.6), {ImageTransparency = 0.35}):Play()
-            TS:Create(Shadow2, TweenInfo.new(0.6), {ImageTransparency = 0.4}):Play()
+            WindowContainer.Size = LastSize
+            Shadow1.ImageTransparency = 0.35
+            Shadow2.ImageTransparency = 0.4
         else 
             PlaySound("Close") -- 🔊 Son de fermeture
             LastSize = WindowContainer.Size 
-            -- Fermeture instantanée (pas d'animation)
+            -- Fermeture instantanée
             WindowContainer.Size = UDim2.new(0, 0, 0, 0)
             Shadow1.ImageTransparency = 1
             Shadow2.ImageTransparency = 1
@@ -2026,6 +2021,7 @@ function Library:CreateWindow(Settings)
 
         local hoverTweenTab, leaveTweenTab
         TabBtn.MouseEnter:Connect(function()
+            PlaySound("Hover") -- 🔊 Son hover sur tab
             if ActiveTab and ActiveTab.Btn ~= TabBtn then
                 if leaveTweenTab then leaveTweenTab:Cancel() end
                 hoverTweenTab = TS:Create(TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.8})
@@ -2132,6 +2128,7 @@ function Library:CreateWindow(Settings)
         end
 
         local function Activate()
+            PlaySound("Click") -- 🔊 Son click sur tab
             if ActiveTab and ActiveTab.Btn == TabBtn then
                 return
             end
@@ -2201,6 +2198,7 @@ function Library:CreateWindow(Settings)
             local function DefaultHover(btn)
                 local hoverTween, leaveTween
                 btn.MouseEnter:Connect(function()
+                    PlaySound("Hover") -- 🔊 Son hover sur boutons/toggles/sliders
                     if leaveTween then leaveTween:Cancel() end
                     hoverTween = TS:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3})
                     hoverTween:Play()
@@ -2461,6 +2459,11 @@ function Library:CreateWindow(Settings)
                 })
                 AddCorner(SlideBar, 10)
                 
+                -- 🔊 Son hover sur slider
+                SlideBar.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                end)
+                
                 local Fill = Create("Frame", {
                     Parent = SlideBar,
                     Size = UDim2.new((Val - Min) / (Max - Min), 0, 1, 0),
@@ -2582,6 +2585,11 @@ function Library:CreateWindow(Settings)
                 })
                 AddCorner(BoxContainer, 6)
                 Create("UIPadding", { Parent = BoxContainer, PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
+
+                -- 🔊 Son hover sur input
+                BoxContainer.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                end)
 
                 local BoxStroke = Create("UIStroke", {
                     Parent = BoxContainer, 
@@ -2764,6 +2772,7 @@ function Library:CreateWindow(Settings)
 
                         local hoverTweenBtn, leaveTweenBtn
                         Btn.MouseEnter:Connect(function()
+                            PlaySound("Hover") -- 🔊 Son hover sur item dropdown
                             if leaveTweenBtn then leaveTweenBtn:Cancel() end
                             hoverTweenBtn = TS:Create(Btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2, TextColor3 = SelectedTheme.Text})
                             hoverTweenBtn:Play()
@@ -2830,6 +2839,11 @@ function Library:CreateWindow(Settings)
                 AddStroke(Wrapper, SelectedTheme).Transparency = 0.8
 
                 local TriggerBtn = Create("TextButton", { Parent = Wrapper, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1, Text = "", ZIndex = 8 })
+                
+                -- 🔊 Son hover sur color picker
+                TriggerBtn.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                end)
                 
                 Create("TextLabel", { 
                     Parent = TriggerBtn, 
@@ -3140,6 +3154,7 @@ function Library:CreateWindow(Settings)
 
                 local hoverTweenBind, leaveTweenBind
                 BindBtn.MouseEnter:Connect(function()
+                    PlaySound("Hover") -- 🔊 Son hover sur keybind
                     if leaveTweenBind then leaveTweenBind:Cancel() end
                     hoverTweenBind = TS:Create(BindBtn, TweenInfo.new(0.2), {TextColor3 = SelectedTheme.Text})
                     hoverTweenBind:Play()
