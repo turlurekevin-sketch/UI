@@ -1742,6 +1742,338 @@ function Library:CreateWindow(Settings)
         ScreenGui:Destroy()
     end)
 
+    -- =========================================================================
+    -- 🔍 GLOBAL SEARCH SYSTEM
+    -- =========================================================================
+    local SearchActive = false
+    local SearchResults = {}
+    local AllElements = {}  -- Stocke tous les éléments searchables
+    local SearchQuery = ""
+    local HighlightedElements = {}
+    
+    -- Container de recherche (masqué par défaut)
+    local SearchContainer = Create("Frame", {
+        Parent = Main,
+        Size = UDim2.new(1, -30, 0, 0),  -- Height = 0 initialement
+        Position = UDim2.new(0, 15, 0, 55),  -- Sous le TopBar
+        BackgroundColor3 = SelectedTheme.Second,
+        BackgroundTransparency = 0.1,
+        ZIndex = 1000,
+        ClipsDescendants = true,
+        Visible = false
+    })
+    AddCorner(SearchContainer, 8)
+    AddStroke(SearchContainer, SelectedTheme.Accent).Transparency = 0.3
+    
+    -- Input de recherche
+    local SearchBox = Create("TextBox", {
+        Parent = SearchContainer,
+        Size = UDim2.new(1, -80, 0, 35),
+        Position = UDim2.new(0, 15, 0, 10),
+        BackgroundColor3 = SelectedTheme.Main,
+        BackgroundTransparency = 0.3,
+        Text = "",
+        PlaceholderText = "🔍 Search elements... (Ctrl+F to open)",
+        Font = Library.GlobalFont,
+        TextColor3 = SelectedTheme.Text,
+        PlaceholderColor3 = SelectedTheme.TextDark,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 1001,
+        ThemeTag = "Text"
+    })
+    AddCorner(SearchBox, 6)
+    AddStroke(SearchBox, SelectedTheme.TextDark).Transparency = 0.6
+    
+    Create("UIPadding", {
+        Parent = SearchBox,
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10)
+    })
+    
+    -- Bouton fermer
+    local CloseSearchBtn = Create("TextButton", {
+        Parent = SearchContainer,
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -45, 0, 12),
+        BackgroundColor3 = SelectedTheme.Error,
+        BackgroundTransparency = 0.3,
+        Text = "✕",
+        Font = Library.GlobalFont,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 14,
+        ZIndex = 1001,
+        AutoButtonColor = false
+    })
+    AddCorner(CloseSearchBtn, 6)
+    
+    -- Résultats de recherche
+    local SearchResultsFrame = Create("ScrollingFrame", {
+        Parent = SearchContainer,
+        Size = UDim2.new(1, -20, 0, 120),
+        Position = UDim2.new(0, 10, 0, 55),
+        BackgroundTransparency = 1,
+        ZIndex = 1001,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = SelectedTheme.Accent,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.new(0, 0, 0, 0)
+    })
+    
+    Create("UIListLayout", {
+        Parent = SearchResultsFrame,
+        Padding = UDim.new(0, 4)
+    })
+    
+    Create("UIPadding", {
+        Parent = SearchResultsFrame,
+        PaddingTop = UDim.new(0, 5),
+        PaddingLeft = UDim.new(0, 5),
+        PaddingRight = UDim.new(0, 5)
+    })
+    
+    -- Fonction pour enregistrer un élément comme searchable
+    local function RegisterSearchableElement(element, name, tab, block, type, callback)
+        table.insert(AllElements, {
+            Element = element,
+            Name = name,
+            Tab = tab,
+            Block = block or "General",
+            Type = type or "Unknown",
+            Callback = callback,
+            Keywords = name:lower()
+        })
+    end
+    
+    -- Fonction pour highlight un élément
+    local function HighlightElement(element)
+        if not element or not element.Parent then return end
+        
+        -- Crée un highlight frame
+        local highlight = Create("Frame", {
+            Parent = element,
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = SelectedTheme.Accent,
+            BackgroundTransparency = 0.7,
+            ZIndex = element.ZIndex + 1000,
+            Name = "SearchHighlight"
+        })
+        AddCorner(highlight, 6)
+        
+        -- Animation pulsante
+        local pulse = TS:Create(highlight, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            BackgroundTransparency = 0.9
+        })
+        pulse:Play()
+        
+        table.insert(HighlightedElements, highlight)
+        return highlight
+    end
+    
+    -- Fonction pour clear tous les highlights
+    local function ClearHighlights()
+        for _, highlight in pairs(HighlightedElements) do
+            if highlight and highlight.Parent then
+                highlight:Destroy()
+            end
+        end
+        HighlightedElements = {}
+    end
+    
+    -- Fonction pour effectuer la recherche
+    local function PerformSearch(query)
+        SearchQuery = query:lower()
+        SearchResults = {}
+        
+        -- Clear les résultats précédents
+        for _, child in pairs(SearchResultsFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        if SearchQuery == "" then
+            SearchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+            return
+        end
+        
+        -- Recherche dans tous les éléments
+        for _, elementData in pairs(AllElements) do
+            if elementData.Keywords:find(SearchQuery, 1, true) then
+                table.insert(SearchResults, elementData)
+            end
+        end
+        
+        -- Crée les boutons de résultats
+        for i, result in pairs(SearchResults) do
+            local ResultBtn = Create("TextButton", {
+                Parent = SearchResultsFrame,
+                Size = UDim2.new(1, 0, 0, 30),
+                BackgroundColor3 = SelectedTheme.Main,
+                BackgroundTransparency = 0.5,
+                Text = "",
+                AutoButtonColor = false,
+                ZIndex = 1002
+            })
+            AddCorner(ResultBtn, 6)
+            
+            -- Icon par type
+            local typeIcons = {
+                Toggle = "🔘", Button = "🔲", Slider = "📊", 
+                Input = "📝", Dropdown = "📋", ColorPicker = "🎨",
+                Label = "📄", Keybind = "⌨️"
+            }
+            
+            Create("TextLabel", {
+                Parent = ResultBtn,
+                Size = UDim2.new(1, -10, 1, 0),
+                Position = UDim2.new(0, 8, 0, 0),
+                BackgroundTransparency = 1,
+                Text = (typeIcons[result.Type] or "🔧") .. " " .. result.Name,
+                Font = Library.GlobalFont,
+                TextColor3 = SelectedTheme.Text,
+                TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                ZIndex = 1003,
+                ThemeTag = "Text"
+            })
+            
+            Create("TextLabel", {
+                Parent = ResultBtn,
+                Size = UDim2.new(0, 100, 1, 0),
+                Position = UDim2.new(1, -105, 0, 0),
+                BackgroundTransparency = 1,
+                Text = result.Tab .. " > " .. result.Block,
+                Font = Library.GlobalFont,
+                TextColor3 = SelectedTheme.TextDark,
+                TextSize = 10,
+                TextXAlignment = Enum.TextXAlignment.Right,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                ZIndex = 1003,
+                ThemeTag = "TextDark"
+            })
+            
+            -- Hover effect
+            local hoverTween, leaveTween
+            ResultBtn.MouseEnter:Connect(function()
+                PlaySound("Hover")
+                if leaveTween then leaveTween:Cancel() end
+                hoverTween = TS:Create(ResultBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2})
+                hoverTween:Play()
+            end)
+            
+            ResultBtn.MouseLeave:Connect(function()
+                if hoverTween then hoverTween:Cancel() end
+                leaveTween = TS:Create(ResultBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.5})
+                leaveTween:Play()
+            end)
+            
+            -- Click to navigate
+            ResultBtn.MouseButton1Click:Connect(function()
+                PlaySound("Click")
+                
+                -- Clear highlights précédents
+                ClearHighlights()
+                
+                -- Navigate vers le tab si nécessaire (implémentation à ajouter)
+                -- Highlight l'élément
+                HighlightElement(result.Element)
+                
+                -- Execute callback si disponible
+                if result.Callback then
+                    result.Callback()
+                end
+                
+                -- Ferme la recherche après 2 secondes
+                task.spawn(function()
+                    task.wait(2)
+                    CloseSearch()
+                end)
+            end)
+        end
+        
+        -- Update canvas size
+        SearchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, #SearchResults * 34 + 10)
+    end
+    
+    -- Fonction pour ouvrir la recherche
+    local function OpenSearch()
+        if SearchActive then return end
+        SearchActive = true
+        
+        PlaySound("Open")
+        SearchContainer.Visible = true
+        
+        -- Animation d'ouverture
+        TS:Create(SearchContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, -30, 0, 180)
+        }):Play()
+        
+        -- Focus sur la search box
+        task.spawn(function()
+            task.wait(0.1)
+            SearchBox:CaptureFocus()
+        end)
+    end
+    
+    -- Fonction pour fermer la recherche
+    local function CloseSearch()
+        if not SearchActive then return end
+        SearchActive = false
+        
+        PlaySound("Close")
+        ClearHighlights()
+        
+        -- Animation de fermeture
+        TS:Create(SearchContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, -30, 0, 0)
+        }):Play()
+        
+        task.spawn(function()
+            task.wait(0.3)
+            SearchContainer.Visible = false
+            SearchBox.Text = ""
+            PerformSearch("") -- Clear results
+        end)
+    end
+    
+    -- Event handlers
+    SearchBox.Changed:Connect(function(property)
+        if property == "Text" then
+            PerformSearch(SearchBox.Text)
+        end
+    end)
+    
+    SearchBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed and #SearchResults > 0 then
+            -- Enter sur le premier résultat
+            if SearchResults[1].Callback then
+                SearchResults[1].Callback()
+            end
+        end
+    end)
+    
+    CloseSearchBtn.MouseButton1Click:Connect(CloseSearch)
+    
+    -- Raccourci clavier Ctrl+F
+    UIS.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        
+        if input.KeyCode == Enum.KeyCode.F and (UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl)) then
+            if SearchActive then
+                CloseSearch()
+            else
+                OpenSearch()
+            end
+        elseif input.KeyCode == Enum.KeyCode.Escape and SearchActive then
+            CloseSearch()
+        end
+    end)
+    
+    -- Expose la fonction pour enregistrer les éléments
+    Library.RegisterSearchable = RegisterSearchableElement
+
     local TabContainer = Create("ScrollingFrame", {
         Parent = Main,
         Size = UDim2.new(0, 165, 1, -171),
@@ -2418,7 +2750,8 @@ function Library:CreateWindow(Settings)
                         if val == nil then return end
                         if State == val then return end
                         UpdateState(val)
-                    end
+                    end,
+                    Element = Wrapper  -- 🔍 Référence pour la recherche
                 }
             end
 
@@ -2579,7 +2912,10 @@ function Library:CreateWindow(Settings)
                     end
                 end)
 
-                Library.Items[Flag] = {Set = Update}
+                Library.Items[Flag] = {
+                    Set = Update,
+                    Element = Frame  -- 🔍 Référence pour la recherche
+                }
             end
 
             function Elements:CreateInput(Cfg)
@@ -2686,7 +3022,10 @@ function Library:CreateWindow(Settings)
                     Update(Box.Text)
                 end)
                 
-                Library.Items[Flag] = {Set = Update}
+                Library.Items[Flag] = {
+                    Set = Update,
+                    Element = Wrapper  -- 🔍 Référence pour la recherche
+                }
             end
 
             function Elements:CreateDropdown(Cfg)
@@ -2695,7 +3034,26 @@ function Library:CreateWindow(Settings)
                 local Expanded = false
                 local Selected = Cfg.Default
                 local Options = Cfg.Items or {}
+                local FilteredOptions = Options
+                local SearchQuery = ""
                 
+                -- Configuration Enhanced
+                local IsSearchable = Cfg.Searchable ~= false  -- Par défaut searchable
+                local IsMultiSelect = Cfg.MultiSelect == true
+                local ShowIcons = Cfg.Icons ~= nil
+                local Groups = Cfg.Groups or nil
+                local MaxHeight = Cfg.MaxHeight or 180
+                
+                -- Multi-select state
+                local SelectedItems = {}
+                if IsMultiSelect and Cfg.Default then
+                    if type(Cfg.Default) == "table" then
+                        SelectedItems = Cfg.Default
+                    else
+                        SelectedItems = {Cfg.Default}
+                    end
+                end
+
                 local Drop = Create("TextButton", {
                     Parent = TargetParent,
                     Size = UDim2.new(1, 0, 0, 34),
@@ -2713,12 +3071,29 @@ function Library:CreateWindow(Settings)
 
                 DefaultHover(Drop)
                 
+                -- Fonction pour générer le texte d'affichage
+                local function GetDisplayText()
+                    local baseName = Cfg.Name or "Dropdown"
+                    
+                    if IsMultiSelect then
+                        if #SelectedItems == 0 then
+                            return baseName
+                        elseif #SelectedItems == 1 then
+                            return baseName .. " - " .. tostring(SelectedItems[1])
+                        else
+                            return baseName .. " - " .. #SelectedItems .. " selected"
+                        end
+                    else
+                        return baseName .. (Selected and " - " .. tostring(Selected) or "")
+                    end
+                end
+                
                 local Title = Create("TextLabel", {
                     Parent = Drop,
                     Size = UDim2.new(1, -40, 0, 34),
                     Position = UDim2.new(0, 12, 0, 0),
                     BackgroundTransparency = 1,
-                    Text = (Cfg.Name or "Dropdown") .. (Selected and " - " .. tostring(Selected) or ""),
+                    Text = GetDisplayText(),
                     Font = Library.GlobalFont,
                     TextColor3 = SelectedTheme.Text,
                     TextSize = 14,
@@ -2739,14 +3114,75 @@ function Library:CreateWindow(Settings)
                 })
                 table.insert(Library.ThemeObjects.TextDark, Arrow)
 
-                local Container = Create("ScrollingFrame", {
+                -- Container principal
+                local MainContainer = Create("Frame", {
                     Parent = Drop,
                     Size = UDim2.new(1, 0, 0, 0),
                     Position = UDim2.new(0, 0, 0, 34),
                     BackgroundTransparency = 1,
                     ZIndex = 8,
-                    ScrollBarThickness = 2,
-                    ScrollBarImageColor3 = SelectedTheme.TextDark,
+                    ClipsDescendants = true
+                })
+
+                -- Barre de recherche (si searchable)
+                local SearchBox = nil
+                local SearchContainer = nil
+                
+                if IsSearchable then
+                    SearchContainer = Create("Frame", {
+                        Parent = MainContainer,
+                        Size = UDim2.new(1, 0, 0, 30),
+                        Position = UDim2.new(0, 0, 0, 0),
+                        BackgroundColor3 = SelectedTheme.Main,
+                        BackgroundTransparency = 0.3,
+                        ZIndex = 9
+                    })
+                    AddCorner(SearchContainer, 6)
+                    
+                    Create("UIPadding", {
+                        Parent = SearchContainer,
+                        PaddingLeft = UDim.new(0, 8),
+                        PaddingRight = UDim.new(0, 8),
+                        PaddingTop = UDim.new(0, 4),
+                        PaddingBottom = UDim.new(0, 4)
+                    })
+                    
+                    SearchBox = Create("TextBox", {
+                        Parent = SearchContainer,
+                        Size = UDim2.new(1, -20, 1, 0),
+                        Position = UDim2.new(0, 0, 0, 0),
+                        BackgroundTransparency = 1,
+                        Text = "",
+                        PlaceholderText = "🔍 Search...",
+                        Font = Library.GlobalFont,
+                        TextColor3 = SelectedTheme.Text,
+                        PlaceholderColor3 = SelectedTheme.TextDark,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 10,
+                        ThemeTag = "Text"
+                    })
+                    
+                    -- Icon de recherche
+                    Create("ImageLabel", {
+                        Parent = SearchContainer,
+                        Size = UDim2.new(0, 14, 0, 14),
+                        Position = UDim2.new(1, -16, 0.5, -7),
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://8560362793", -- Search icon
+                        ImageColor3 = SelectedTheme.TextDark,
+                        ZIndex = 10
+                    })
+                end
+
+                local Container = Create("ScrollingFrame", {
+                    Parent = MainContainer,
+                    Size = UDim2.new(1, 0, 1, IsSearchable and -35 or 0),
+                    Position = UDim2.new(0, 0, 0, IsSearchable and 35 or 5),
+                    BackgroundTransparency = 1,
+                    ZIndex = 8,
+                    ScrollBarThickness = 3,
+                    ScrollBarImageColor3 = SelectedTheme.Accent,
                     BorderSizePixel = 0,
                     CanvasSize = UDim2.new(0, 0, 0, 0)
                 })
@@ -2761,104 +3197,340 @@ function Library:CreateWindow(Settings)
                 
                 local ListLayout = Create("UIListLayout", { Parent = Container, Padding = UDim.new(0, 4) })
                 
-                local function Update(val) 
-                    Selected = val 
-                    Title.Text = (Cfg.Name or "Dropdown") .. " - " .. tostring(Selected) 
-                    if Cfg.Callback then
-                        Cfg.Callback(val)
+                -- Fonction pour filtrer les options
+                local function FilterOptions()
+                    if not IsSearchable or SearchQuery == "" then
+                        FilteredOptions = Options
+                        return
                     end
-                    Library.Flags[Flag] = val
+                    
+                    FilteredOptions = {}
+                    local query = SearchQuery:lower()
+                    
+                    for _, option in pairs(Options) do
+                        local optionText = tostring(option):lower()
+                        if optionText:find(query, 1, true) then
+                            table.insert(FilteredOptions, option)
+                        end
+                    end
+                end
+
+                local function Update(val, isMultiUpdate) 
+                    if IsMultiSelect then
+                        if isMultiUpdate then
+                            -- Toggle selection
+                            local found = false
+                            for i, item in pairs(SelectedItems) do
+                                if item == val then
+                                    table.remove(SelectedItems, i)
+                                    found = true
+                                    break
+                                end
+                            end
+                            if not found then
+                                table.insert(SelectedItems, val)
+                            end
+                        else
+                            SelectedItems = type(val) == "table" and val or {val}
+                        end
+                        
+                        Title.Text = GetDisplayText()
+                        if Cfg.Callback then
+                            Cfg.Callback(SelectedItems)
+                        end
+                        Library.Flags[Flag] = SelectedItems
+                    else
+                        Selected = val 
+                        Title.Text = GetDisplayText()
+                        if Cfg.Callback then
+                            Cfg.Callback(val)
+                        end
+                        Library.Flags[Flag] = val
+                    end
+                end
+
+                local function CreateOptionButton(item, group)
+                    local isSelected = false
+                    
+                    if IsMultiSelect then
+                        for _, selected in pairs(SelectedItems) do
+                            if selected == item then
+                                isSelected = true
+                                break
+                            end
+                        end
+                    else
+                        isSelected = (item == Selected)
+                    end
+
+                    local Btn = Create("TextButton", {
+                        Parent = Container,
+                        Size = UDim2.new(1, 0, 0, 28),
+                        BackgroundColor3 = isSelected and SelectedTheme.Accent or SelectedTheme.Main,
+                        BackgroundTransparency = isSelected and 0.3 or 0.8,
+                        Text = "",
+                        AutoButtonColor = false,
+                        ZIndex = 9
+                    })
+                    AddCorner(Btn, 6)
+
+                    -- Icon/Checkbox pour multi-select
+                    local IconContainer = nil
+                    if IsMultiSelect then
+                        IconContainer = Create("Frame", {
+                            Parent = Btn,
+                            Size = UDim2.new(0, 20, 0, 20),
+                            Position = UDim2.new(0, 8, 0.5, -10),
+                            BackgroundColor3 = isSelected and SelectedTheme.Accent or SelectedTheme.Second,
+                            BackgroundTransparency = isSelected and 0 : 0.5,
+                            ZIndex = 10
+                        })
+                        AddCorner(IconContainer, 4)
+                        AddStroke(IconContainer, SelectedTheme.TextDark).Transparency = 0.6
+                        
+                        if isSelected then
+                            Create("ImageLabel", {
+                                Parent = IconContainer,
+                                Size = UDim2.new(0, 12, 0, 12),
+                                Position = UDim2.new(0.5, -6, 0.5, -6),
+                                BackgroundTransparency = 1,
+                                Image = "rbxassetid://6031097225", -- Checkmark
+                                ImageColor3 = Color3.fromRGB(255, 255, 255),
+                                ZIndex = 11
+                            })
+                        end
+                    elseif ShowIcons and Cfg.Icons[item] then
+                        -- Icon personnalisé
+                        Create("ImageLabel", {
+                            Parent = Btn,
+                            Size = UDim2.new(0, 18, 0, 18),
+                            Position = UDim2.new(0, 8, 0.5, -9),
+                            BackgroundTransparency = 1,
+                            Image = Cfg.Icons[item],
+                            ImageColor3 = SelectedTheme.Text,
+                            ZIndex = 10
+                        })
+                    end
+
+                    local Label = Create("TextLabel", {
+                        Parent = Btn,
+                        Size = UDim2.new(1, IsMultiSelect and -36 or (ShowIcons and -34 or -16), 1, 0),
+                        Position = UDim2.new(0, IsMultiSelect and 32 or (ShowIcons and 30 or 8), 0, 0),
+                        BackgroundTransparency = 1,
+                        Text = tostring(item),
+                        Font = Library.GlobalFont,
+                        TextColor3 = isSelected and SelectedTheme.Text or SelectedTheme.TextDark,
+                        TextSize = 13,
+                        ZIndex = 10,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextTruncate = Enum.TextTruncate.AtEnd
+                    })
+
+                    local hoverTweenBtn, leaveTweenBtn
+                    Btn.MouseEnter:Connect(function()
+                        PlaySound("Hover") -- 🔊 Son hover sur item dropdown
+                        if leaveTweenBtn then leaveTweenBtn:Cancel() end
+                        hoverTweenBtn = TS:Create(Btn, TweenInfo.new(0.2), {
+                            BackgroundTransparency = isSelected and 0.1 or 0.2
+                        })
+                        TS:Create(Label, TweenInfo.new(0.2), {
+                            TextColor3 = SelectedTheme.Text
+                        }):Play()
+                        hoverTweenBtn:Play()
+                    end)
+                    
+                    Btn.MouseLeave:Connect(function()
+                        if hoverTweenBtn then hoverTweenBtn:Cancel() end
+                        leaveTweenBtn = TS:Create(Btn, TweenInfo.new(0.2), {
+                            BackgroundTransparency = isSelected and 0.3 or 0.8
+                        })
+                        TS:Create(Label, TweenInfo.new(0.2), {
+                            TextColor3 = isSelected and SelectedTheme.Text or SelectedTheme.TextDark
+                        }):Play()
+                        leaveTweenBtn:Play()
+                    end)
+                    
+                    Btn.MouseButton1Click:Connect(function()
+                        PlaySound("Click") -- 🔊 Son click sur sélection
+                        
+                        if IsMultiSelect then
+                            Update(item, true) -- Multi-select toggle
+                            RefreshList() -- Refresh pour mettre à jour les checkboxes
+                        else
+                            Update(item)
+                            -- Ferme le dropdown pour single select
+                            Expanded = false
+                            local targetHeight = 34
+                            TS:Create(Drop, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
+                            TS:Create(Arrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                            TS:Create(MainContainer, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+                        end
+                    end)
+
+                    return Btn
                 end
 
                 local function RefreshList(newOptions)
                     Options = newOptions or Options
+                    
+                    -- Clear existing buttons
                     for _, v in pairs(Container:GetChildren()) do
                         if v:IsA("TextButton") then
                             v:Destroy()
                         end
                     end
                     
-                    local found = false
-                    for _, v in pairs(Options) do
-                        if v == Selected then
-                            found = true
-                            break
+                    -- Update filtered options
+                    FilterOptions()
+                    
+                    -- Validate selections
+                    if not IsMultiSelect then
+                        local found = false
+                        for _, v in pairs(Options) do
+                            if v == Selected then
+                                found = true
+                                break
+                            end
+                        end
+                        
+                        if not found then
+                            Selected = nil
+                        end
+                    else
+                        local validItems = {}
+                        for _, selected in pairs(SelectedItems) do
+                            for _, option in pairs(Options) do
+                                if option == selected then
+                                    table.insert(validItems, selected)
+                                    break
+                                end
+                            end
+                        end
+                        SelectedItems = validItems
+                    end
+
+                    Title.Text = GetDisplayText()
+
+                    -- Create group sections if groups are defined
+                    if Groups then
+                        for groupName, groupOptions in pairs(Groups) do
+                            -- Group header
+                            local GroupHeader = Create("TextLabel", {
+                                Parent = Container,
+                                Size = UDim2.new(1, 0, 0, 20),
+                                BackgroundTransparency = 1,
+                                Text = groupName,
+                                Font = Enum.Font.GothamBold,
+                                TextColor3 = SelectedTheme.Accent,
+                                TextSize = 12,
+                                ZIndex = 9,
+                                TextXAlignment = Enum.TextXAlignment.Left
+                            })
+
+                            -- Group items
+                            for _, item in pairs(groupOptions) do
+                                if not FilteredOptions or table.find(FilteredOptions, item) then
+                                    CreateOptionButton(item, groupName)
+                                end
+                            end
+                            
+                            -- Spacer after group
+                            Create("Frame", {
+                                Parent = Container,
+                                Size = UDim2.new(1, 0, 0, 4),
+                                BackgroundTransparency = 1,
+                                ZIndex = 9
+                            })
+                        end
+                    else
+                        -- Create buttons for filtered options
+                        for _, item in pairs(FilteredOptions) do
+                            CreateOptionButton(item)
                         end
                     end
                     
-                    if found then
-                        Title.Text = (Cfg.Name or "Dropdown") .. " - " .. tostring(Selected)
-                    else
-                        Selected = nil
-                        Title.Text = Cfg.Name or "Dropdown"
+                    -- Update canvas size
+                    local totalHeight = 0
+                    for _, child in pairs(Container:GetChildren()) do
+                        if child:IsA("GuiObject") and child.Visible then
+                            totalHeight = totalHeight + child.Size.Y.Offset + (child:IsA("TextButton") and 4 or 0)
+                        end
                     end
-
-                    for _, item in pairs(Options) do
-                        local Btn = Create("TextButton", {
-                            Parent = Container,
-                            Size = UDim2.new(1, 0, 0, 28),
-                            Position = UDim2.new(0, 0, 0, 0),
-                            BackgroundColor3 = SelectedTheme.Main,
-                            BackgroundTransparency = 0.8,
-                            Text = tostring(item),
-                            Font = Library.GlobalFont,
-                            TextColor3 = SelectedTheme.TextDark,
-                            TextSize = 13,
-                            ZIndex = 9,
-                            TextXAlignment = Enum.TextXAlignment.Center,
-                            AutoButtonColor = false,
-                            ThemeTag = "Main"
-                        })
-                        AddCorner(Btn, 6)
-                        table.insert(Library.ThemeObjects.TextDark, Btn)
-
-                        local hoverTweenBtn, leaveTweenBtn
-                        Btn.MouseEnter:Connect(function()
-                            PlaySound("Hover") -- 🔊 Son hover sur item dropdown
-                            if leaveTweenBtn then leaveTweenBtn:Cancel() end
-                            hoverTweenBtn = TS:Create(Btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2, TextColor3 = SelectedTheme.Text})
-                            hoverTweenBtn:Play()
-                        end)
-                        Btn.MouseLeave:Connect(function()
-                            if hoverTweenBtn then hoverTweenBtn:Cancel() end
-                            leaveTweenBtn = TS:Create(Btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.8, TextColor3 = SelectedTheme.TextDark})
-                            leaveTweenBtn:Play()
-                        end)
-                        Btn.MouseButton1Click:Connect(function()
-                            Update(item)
-                            Expanded = false
-                            TS:Create(Drop, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 34)}):Play()
-                            TS:Create(Arrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
-                        end)
-                    end
-                    Container.CanvasSize = UDim2.new(0, 0, 0, #Options * 32 + 10)
+                    Container.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
+                end
+                
+                -- Search functionality
+                if SearchBox then
+                    SearchBox.Changed:Connect(function(prop)
+                        if prop == "Text" then
+                            SearchQuery = SearchBox.Text
+                            RefreshList()
+                        end
+                    end)
+                    
+                    SearchBox.FocusLost:Connect(function()
+                        -- Clear search when focus lost and no results
+                        if #FilteredOptions == 0 then
+                            SearchBox.Text = ""
+                            SearchQuery = ""
+                            RefreshList()
+                        end
+                    end)
                 end
                 
                 RefreshList(Options)
                 
                 if Cfg.Default and Cfg.Callback then
-                    task.spawn(Cfg.Callback, Selected)
+                    task.spawn(Cfg.Callback, IsMultiSelect and SelectedItems or Selected)
                 end
 
                 Drop.MouseButton1Click:Connect(function()
+                    PlaySound("Click") -- 🔊 Son ouverture dropdown
+                    
                     if Cfg.UpdateList then
                         RefreshList(Cfg.UpdateList())
                     end
+                    
                     Expanded = not Expanded
-                    local H = Expanded and math.min(#Options * 32 + 44, 180) or 34
-                    TS:Create(Drop, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, H)}):Play()
+                    local targetHeight = Expanded and math.min(
+                        (IsSearchable and 35 or 5) + math.min(#FilteredOptions * 32 + 20, MaxHeight - (IsSearchable and 35 or 5)),
+                        MaxHeight
+                    ) + 34 or 34
+                    
+                    TS:Create(Drop, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
                     TS:Create(Arrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = Expanded and 180 or 0}):Play()
-                    TS:Create(Container, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, -34)}):Play()
+                    TS:Create(MainContainer, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight - 34)}):Play()
+                    
+                    -- Focus search box when opening
+                    if Expanded and SearchBox then
+                        task.wait(0.2) -- Wait for animation
+                        SearchBox:CaptureFocus()
+                    end
                 end)
                 
                 Library.Items[Flag] = {
-                    Set = Update,
+                    Set = function(self, val) Update(val) end,
                     Refresh = function(self, list) RefreshList(list) end,
-                    Get = function() return Selected end
+                    Get = function() return IsMultiSelect and SelectedItems or Selected end,
+                    ClearSelection = function() 
+                        if IsMultiSelect then
+                            SelectedItems = {}
+                        else
+                            Selected = nil
+                        end
+                        Update(IsMultiSelect and {} or nil)
+                    end,
+                    SetMultiSelect = function(self, items)
+                        if IsMultiSelect and type(items) == "table" then
+                            Update(items)
+                        end
+                    end,
+                    Element = Drop  -- 🔍 Référence pour la recherche
                 }
                 
                 return Library.Items[Flag]
             end
+
 
             function Elements:CreateColorPicker(Cfg)
                 ElementOrder = ElementOrder + 1
@@ -3686,5 +4358,46 @@ function Library:CreateWindow(Settings)
 
     return Funcs
 end
+
+-- =========================================================================
+-- 🔍 AUTO-REGISTRATION SYSTEM FOR SEARCH GLOBAL
+-- =========================================================================
+-- Ce système enregistre automatiquement tous les éléments créés
+task.spawn(function()
+    task.wait(2) -- Attend que l'UI soit complètement chargée
+    
+    if Library.RegisterSearchable then
+        -- Parcourt tous les éléments dans Library.Items
+        for flag, item in pairs(Library.Items) do
+            if item and item.Element then
+                -- Essaie de déterminer le type d'élément
+                local elementType = "Unknown"
+                local element = item.Element
+                
+                if element then
+                    -- Détermine le type en fonction des propriétés
+                    if element:FindFirstChild("Toggle") then
+                        elementType = "Toggle"
+                    elseif element:FindFirstChild("Fill") then
+                        elementType = "Slider"  
+                    elseif element:FindFirstChild("Input") then
+                        elementType = "Input"
+                    elseif element:FindFirstChild("Container") then
+                        elementType = "Dropdown"
+                    elseif element:FindFirstChild("Preview") then
+                        elementType = "ColorPicker"
+                    elseif element.ClassName == "TextButton" then
+                        elementType = "Button"
+                    elseif element:FindFirstChild("Label") then
+                        elementType = "Label"
+                    end
+                    
+                    -- Enregistre l'élément
+                    Library.RegisterSearchable(element, flag, "Unknown", "Unknown", elementType)
+                end
+            end
+        end
+    end
+end)
 
 return Library
