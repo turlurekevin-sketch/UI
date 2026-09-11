@@ -4052,7 +4052,6 @@ function Library:CreateWindow(Settings)
     return Funcs
 end
 
-return Library
 -- ⚙️ FONCTIONS DE CONTRÔLE DES NOUVELLES FONCTIONNALITÉS
 
 -- 🔊 Contrôle du volume et des sons
@@ -4318,3 +4317,5 @@ function Library:CreateAdvancedSettings()
     
     return Library.SettingsWindow
 end
+
+return Library
