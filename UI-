@@ -1769,43 +1769,7 @@ function Library:CreateWindow(Settings)
         PaddingRight = UDim.new(0, 6)
     })
     
-    local OpenSettingsBtn = Create("TextButton", {
-        Parent = Main,
-        Size = UDim2.new(0, 165, 0, 40),
-        Position = UDim2.new(0, 15, 1, -103),
-        BackgroundColor3 = SelectedTheme.Second,
-        BackgroundTransparency = 0.5,
-        Text = "GUI Settings",
-        Font = Library.GlobalFontBold,
-        TextColor3 = SelectedTheme.Text,
-        TextSize = 13,
-        ZIndex = 6,
-        ThemeTag = "Second"
-    })
-    AddCorner(OpenSettingsBtn, 8)
-    table.insert(Library.ThemeObjects.Text, OpenSettingsBtn)
-
-    CreateRipple(OpenSettingsBtn, SelectedTheme.Accent)
-    AddStroke(OpenSettingsBtn, SelectedTheme).Transparency = 0.8
-    
-    local hoverTweenSettings, leaveTweenSettings
-    OpenSettingsBtn.MouseEnter:Connect(function()
-        PlaySound("Hover") -- 🔊 Son hover sur bouton settings
-        if leaveTweenSettings then leaveTweenSettings:Cancel() end
-        hoverTweenSettings = TS:Create(OpenSettingsBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2})
-        hoverTweenSettings:Play()
-    end)
-    OpenSettingsBtn.MouseLeave:Connect(function()
-        if hoverTweenSettings then hoverTweenSettings:Cancel() end
-        leaveTweenSettings = TS:Create(OpenSettingsBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.5})
-        leaveTweenSettings:Play()
-    end)
-    OpenSettingsBtn.MouseButton1Down:Connect(function()
-        TS:Create(OpenSettingsBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 161, 0, 36), Position = UDim2.new(0, 17, 1, -101)}):Play()
-    end)
-    OpenSettingsBtn.MouseButton1Up:Connect(function()
-        TS:Create(OpenSettingsBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 165, 0, 40), Position = UDim2.new(0, 15, 1, -103)}):Play()
-    end)
+    -- GUI Settings button removed by user request
 
     local ProfileFrame = Create("Frame", {
         Parent = Main,
@@ -3337,8 +3301,9 @@ function Library:CreateWindow(Settings)
         return TabElements, Activate
     end
 
-    local SettingsTab, OpenSettingsFunc = Funcs:CreateTab("Settings", true) 
-    
+    -- local SettingsTab, OpenSettingsFunc = Funcs:CreateTab("Settings", true) -- Removed by user request 
+    -- Settings tab hidden (removed by user request)
+    --[[
     for _, v in pairs(TabContainer:GetChildren()) do 
         if v:IsA("TextButton") then
             local lbl = v:FindFirstChild("TabLabel")
@@ -3349,11 +3314,7 @@ function Library:CreateWindow(Settings)
         end 
     end
 
-    OpenSettingsBtn.MouseButton1Click:Connect(function()
-        if OpenSettingsFunc then
-            OpenSettingsFunc()
-        end
-    end)
+    -- GUI Settings button click handler removed
 
     local AppBlock = SettingsTab:CreateBlock({Name = "Appearance", Side = "Left"})
     
@@ -3682,7 +3643,7 @@ function Library:CreateWindow(Settings)
                 Library:Notify({Title = "Error", Content = "Select a valid theme first"})
             end
         end
-    })
+    --]]
 
     return Funcs
 end
