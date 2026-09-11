@@ -58,203 +58,6 @@ local function PlaySound(soundName)
     end)
 end
 
--- ✨ SYSTÈME D'ANIMATIONS FLUIDES
-Library.AnimationsEnabled = true
-
--- Configuration des animations
-local AnimationSettings = {
-    -- Durées des animations (en secondes)
-    HoverDuration = 0.15,
-    ClickDuration = 0.08,
-    FadeInDuration = 0.25,
-    ScaleDuration = 0.12,
-    ColorDuration = 0.18,
-    
-    -- Styles d'easing
-    HoverEasing = Enum.EasingStyle.Quart,
-    ClickEasing = Enum.EasingStyle.Back,
-    FadeEasing = Enum.EasingStyle.Sine,
-    
-    -- Valeurs d'animation
-    HoverScale = 1.03,
-    ClickScale = 0.95,
-    HoverBrightness = 1.15,
-    GlowTransparency = 0.7
-}
-
--- Cache pour éviter de créer plusieurs tweens sur le même objet
-local ActiveTweens = {}
-
--- Fonction pour créer des animations fluides
-local function CreateTween(obj, duration, properties, easingStyle, easingDirection)
-    if not Library.AnimationsEnabled or not obj or not obj.Parent then return end
-    
-    -- Annule les anciens tweens sur cet objet
-    local objId = tostring(obj)
-    if ActiveTweens[objId] then
-        for _, tween in pairs(ActiveTweens[objId]) do
-            pcall(function() tween:Cancel() end)
-        end
-        ActiveTweens[objId] = {}
-    else
-        ActiveTweens[objId] = {}
-    end
-    
-    local tweenInfo = TweenInfo.new(
-        duration or AnimationSettings.HoverDuration,
-        easingStyle or AnimationSettings.HoverEasing,
-        easingDirection or Enum.EasingDirection.Out,
-        0, false, 0
-    )
-    
-    local tween = TS:Create(obj, tweenInfo, properties)
-    table.insert(ActiveTweens[objId], tween)
-    
-    tween:Play()
-    
-    -- Nettoyage automatique
-    tween.Completed:Connect(function()
-        local index = table.find(ActiveTweens[objId], tween)
-        if index then
-            table.remove(ActiveTweens[objId], index)
-        end
-    end)
-    
-    return tween
-end
-
--- Animation de hover (survol)
-local function AnimateHover(obj, isHovering)
-    if not obj or not obj.Parent then return end
-    
-    local targetScale = isHovering and AnimationSettings.HoverScale or 1
-    local targetBrightness = isHovering and AnimationSettings.HoverBrightness or 1
-    
-    -- Animation de scale
-    CreateTween(obj, AnimationSettings.HoverDuration, {
-        Size = UDim2.new(targetScale, 0, targetScale, 0) * obj.Size / obj.Size.Scale
-    })
-    
-    -- Animation de couleur (si l'objet a une couleur de fond)
-    if obj.BackgroundColor3 then
-        local originalColor = obj.BackgroundColor3
-        local newColor = Color3.fromRGB(
-            math.min(255, originalColor.R * 255 * targetBrightness),
-            math.min(255, originalColor.G * 255 * targetBrightness),
-            math.min(255, originalColor.B * 255 * targetBrightness)
-        )
-        CreateTween(obj, AnimationSettings.ColorDuration, {
-            BackgroundColor3 = newColor
-        })
-    end
-end
-
--- Animation de clic
-local function AnimateClick(obj, callback)
-    if not obj or not obj.Parent then return end
-    
-    -- Animation de "squeeze" puis retour
-    CreateTween(obj, AnimationSettings.ClickDuration, {
-        Size = UDim2.new(AnimationSettings.ClickScale, 0, AnimationSettings.ClickScale, 0) * obj.Size / obj.Size.Scale
-    }, AnimationSettings.ClickEasing, Enum.EasingDirection.Out)
-    
-    -- Retour à la normale après un délai
-    task.wait(AnimationSettings.ClickDuration)
-    CreateTween(obj, AnimationSettings.ClickDuration, {
-        Size = obj.Size
-    }, AnimationSettings.ClickEasing, Enum.EasingDirection.Out)
-    
-    -- Exécute le callback si fourni
-    if callback then
-        task.spawn(callback)
-    end
-end
-
--- Animation de fade-in pour nouveaux éléments
-local function AnimateFadeIn(obj, startTransparency)
-    if not obj or not obj.Parent then return end
-    
-    startTransparency = startTransparency or 1
-    obj.BackgroundTransparency = startTransparency
-    
-    CreateTween(obj, AnimationSettings.FadeInDuration, {
-        BackgroundTransparency = 0
-    }, AnimationSettings.FadeEasing)
-    
-    -- Anime aussi le texte s'il y en a
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        obj.TextTransparency = startTransparency
-        CreateTween(obj, AnimationSettings.FadeInDuration, {
-            TextTransparency = 0
-        }, AnimationSettings.FadeEasing)
-    end
-end
-
--- Animation de glow effect
-local function CreateGlowEffect(obj, glowColor)
-    if not obj or not obj.Parent then return end
-    
-    local glow = Instance.new("UIStroke")
-    glow.Color = glowColor or Color3.fromRGB(70, 180, 230)
-    glow.Thickness = 0
-    glow.Transparency = 1
-    glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    glow.Parent = obj
-    
-    -- Animation du glow
-    CreateTween(glow, AnimationSettings.HoverDuration, {
-        Thickness = 2,
-        Transparency = AnimationSettings.GlowTransparency
-    })
-    
-    return glow
-end
-
--- Fonction utilitaire pour ajouter les effets hover universels
-local function AddHoverEffects(obj, customHoverColor)
-    if not obj or not obj.Parent then return end
-    
-    local originalColor = obj.BackgroundColor3
-    local isHovering = false
-    local glowEffect = nil
-    
-    local function onHover()
-        if isHovering then return end
-        isHovering = true
-        
-        PlaySound("Hover")
-        AnimateHover(obj, true)
-        
-        -- Crée un glow effect
-        glowEffect = CreateGlowEffect(obj, customHoverColor)
-    end
-    
-    local function onLeave()
-        if not isHovering then return end
-        isHovering = false
-        
-        AnimateHover(obj, false)
-        
-        -- Supprime le glow effect
-        if glowEffect and glowEffect.Parent then
-            CreateTween(glowEffect, AnimationSettings.HoverDuration, {
-                Thickness = 0,
-                Transparency = 1
-            })
-            task.delay(AnimationSettings.HoverDuration + 0.1, function()
-                if glowEffect and glowEffect.Parent then
-                    glowEffect:Destroy()
-                end
-            end)
-        end
-    end
-    
-    obj.MouseEnter:Connect(onHover)
-    obj.MouseLeave:Connect(onLeave)
-    
-    return {onHover = onHover, onLeave = onLeave}
-end
-
 local CurrentFPS = 60
 local Frames = 0
 local LastTick = os.clock()
@@ -2217,62 +2020,19 @@ function Library:CreateWindow(Settings)
         end
 
         local hoverTweenTab, leaveTweenTab
-        
-        -- ✨ Animations fluides pour les tabs avec effets visuels avancés
-        local isTabActive = false
-        
         TabBtn.MouseEnter:Connect(function()
-            PlaySound("Hover")
-            if not isTabActive then
-                -- Animation de hover avec glow effect
-                CreateTween(TabBtn, AnimationSettings.HoverDuration, {
-                    BackgroundTransparency = 0.7
-                })
-                
-                -- Effet de scale subtile
-                CreateTween(TabLabel, AnimationSettings.HoverDuration, {
-                    TextSize = 15
-                }, Enum.EasingStyle.Sine)
-                
-                -- Glow effect sur l'icone si présent
-                if TabIcon then
-                    CreateTween(TabIcon, AnimationSettings.HoverDuration, {
-                        Size = UDim2.new(0, 24, 0, 24),
-                        Position = UDim2.new(0, 9, 0.5, -12)
-                    }, Enum.EasingStyle.Back)
-                end
-                
-                -- Animation de la ligne active si présente
-                if ActiveLine then
-                    CreateTween(ActiveLine, AnimationSettings.HoverDuration, {
-                        Size = UDim2.new(0, 3, 0, 16)
-                    }, Enum.EasingStyle.Back)
-                end
+            PlaySound("Hover") -- 🔊 Son hover sur tab
+            if ActiveTab and ActiveTab.Btn ~= TabBtn then
+                if leaveTweenTab then leaveTweenTab:Cancel() end
+                hoverTweenTab = TS:Create(TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.8})
+                hoverTweenTab:Play()
             end
         end)
-        
         TabBtn.MouseLeave:Connect(function()
-            if not isTabActive then
-                CreateTween(TabBtn, AnimationSettings.HoverDuration, {
-                    BackgroundTransparency = 1
-                })
-                
-                CreateTween(TabLabel, AnimationSettings.HoverDuration, {
-                    TextSize = 14
-                }, Enum.EasingStyle.Sine)
-                
-                if TabIcon then
-                    CreateTween(TabIcon, AnimationSettings.HoverDuration, {
-                        Size = UDim2.new(0, 22, 0, 22),
-                        Position = UDim2.new(0, 10, 0.5, -11)
-                    })
-                end
-                
-                if ActiveLine then
-                    CreateTween(ActiveLine, AnimationSettings.HoverDuration, {
-                        Size = UDim2.new(0, 3, 0, 0)
-                    })
-                end
+            if ActiveTab and ActiveTab.Btn ~= TabBtn then
+                if hoverTweenTab then hoverTweenTab:Cancel() end
+                leaveTweenTab = TS:Create(TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1})
+                leaveTweenTab:Play()
             end
         end)
 
@@ -2526,7 +2286,7 @@ function Library:CreateWindow(Settings)
                 AddCorner(Btn, 8)
                 AddStroke(Btn, SelectedTheme).Transparency = 0.8
 
-                local BtnLabel = Create("TextLabel", {
+                Create("TextLabel", {
                     Parent = Btn,
                     Size = UDim2.new(1, -20, 1, 0),
                     Position = UDim2.new(0, 10, 0, 0),
@@ -2542,25 +2302,15 @@ function Library:CreateWindow(Settings)
                 })
                 
                 CreateRipple(Btn, SelectedTheme.Accent)
+                DefaultHover(Btn)
                 
-                -- ✨ ANIMATIONS FLUIDES pour les boutons
-                AnimateFadeIn(Btn, 0.8) -- Fade-in à la création
-                
-                -- Effets hover avec glow
-                AddHoverEffects(Btn, SelectedTheme.Accent)
-                
-                -- Animation de clic améliorée
                 Btn.MouseButton1Click:Connect(function()
-                    PlaySound("Click")
-                    
-                    -- Animation de clic fluide
-                    task.spawn(function()
-                        AnimateClick(Btn, function()
-                            if Cfg.Callback then
-                                Cfg.Callback()
-                            end
-                        end)
-                    end)
+                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -4, 0, 30), Position = UDim2.new(0, 2, 0, 2)}):Play()
+                    task.wait(0.1)
+                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 0)}):Play()
+                    if Cfg.Callback then
+                        Cfg.Callback()
+                    end
                 end)
             end
 
@@ -2597,9 +2347,7 @@ function Library:CreateWindow(Settings)
                     ThemeTag = "Text"
                 })
                 
-                -- ✨ Animations fluides pour les toggles
-                AnimateFadeIn(Btn, 0.8)
-                AddHoverEffects(Btn, SelectedTheme.ElementAccent)
+                DefaultHover(Btn)
                 
                 local Box = Create("Frame", {
                     Parent = Btn,
@@ -2635,38 +2383,20 @@ function Library:CreateWindow(Settings)
                     State = val
                     Library.Flags[Flag] = val
                     
+                    -- 🔊 Son de toggle
                     PlaySound("Toggle")
                     
-                    -- ✨ Animation fluide du stroke avec glow effect temporaire
-                    CreateTween(BoxStroke, AnimationSettings.ColorDuration, {
+                    TS:Create(BoxStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                         Color = State and SelectedTheme.ElementAccent or SelectedTheme.TextDark,
                         Transparency = State and 0 or 0.8
-                    }, Enum.EasingStyle.Quart)
+                    }):Play()
                     
-                    -- ✨ Animation fluide du carré avec effet bounce plus marqué
-                    CreateTween(InnerSquare, AnimationSettings.FadeInDuration * 1.5, {
+                    -- Animation plus fluide avec effet de rebond
+                    TS:Create(InnerSquare, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                         BackgroundColor3 = State and SelectedTheme.ElementAccent or SelectedTheme.TextDark,
                         Size = State and UDim2.fromScale(0.6, 0.6) or UDim2.fromScale(0, 0),
                         BackgroundTransparency = State and 0 or 1
-                    }, Enum.EasingStyle.Back)
-                    
-                    -- ✨ Glow effect temporaire quand activé
-                    if State then
-                        local glow = CreateGlowEffect(Box, SelectedTheme.ElementAccent)
-                        task.delay(0.5, function()
-                            if glow and glow.Parent then
-                                CreateTween(glow, AnimationSettings.HoverDuration, {
-                                    Thickness = 0,
-                                    Transparency = 1
-                                })
-                                task.delay(AnimationSettings.HoverDuration + 0.1, function()
-                                    if glow and glow.Parent then
-                                        glow:Destroy()
-                                    end
-                                end)
-                            end
-                        end)
-                    end
+                    }):Play()
                     
                     if Cfg.Callback then
                         Cfg.Callback(State)
@@ -2680,12 +2410,7 @@ function Library:CreateWindow(Settings)
                 end
 
                 Btn.MouseButton1Click:Connect(function()
-                    -- ✨ Animation de click sur le toggle
-                    task.spawn(function()
-                        AnimateClick(Box, function()
-                            UpdateState(not State)
-                        end)
-                    end)
+                    UpdateState(not State)
                 end)
                 
                 Library.Items[Flag] = {
@@ -2776,9 +2501,10 @@ function Library:CreateWindow(Settings)
                 })
                 AddCorner(SlideBar, 10)
                 
-                -- ✨ Animations fluides pour les sliders
-                AnimateFadeIn(SlideBar, 0.6)
-                AddHoverEffects(SlideBar, SelectedTheme.ElementAccent)
+                -- 🔊 Son hover sur slider
+                SlideBar.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                end)
                 
                 local Fill = Create("Frame", {
                     Parent = SlideBar,
@@ -2799,20 +2525,12 @@ function Library:CreateWindow(Settings)
                 })
                 AddCorner(Thumb, 10)
                 
-                -- ✨ Glow effect pour le thumb
-                local thumbGlow = nil
-                
                 local function Update(val)
                     val = math.clamp(val, Min, Max)
                     Val = val
                     Library.Flags[Flag] = val
                     ValLbl.Text = tostring(Val)
-                    
-                    -- ✨ Animation fluide du fill
-                    CreateTween(Fill, AnimationSettings.HoverDuration, {
-                        Size = UDim2.new((Val - Min) / (Max - Min), 0, 1, 0)
-                    }, Enum.EasingStyle.Sine)
-                    
+                    TS:Create(Fill, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size = UDim2.new((Val - Min) / (Max - Min), 0, 1, 0)}):Play()
                     if Cfg.Callback then
                         Cfg.Callback(Val)
                     end
@@ -2835,42 +2553,14 @@ function Library:CreateWindow(Settings)
                     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
                         Dragging = true
                         DragUpdate(i)
-                        
-                        PlaySound("Click")
-                        
-                        -- ✨ Animation fluide du thumb + glow effect
-                        CreateTween(Thumb, AnimationSettings.ScaleDuration, {
-                            Size = UDim2.new(0, 18, 0, 18), 
-                            Position = UDim2.new(1, -9, 0.5, -9)
-                        }, Enum.EasingStyle.Back)
-                        
-                        -- Crée un glow effect pendant le drag
-                        thumbGlow = CreateGlowEffect(Thumb, SelectedTheme.ElementAccent)
+                        TS:Create(Thumb, TweenInfo.new(0.2), {Size = UDim2.new(0, 18, 0, 18), Position = UDim2.new(1, -9, 0.5, -9)}):Play()
                     end
                 end)
                 
                 UIS.InputEnded:Connect(function(i)
                     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
                         Dragging = false
-                        
-                        -- ✨ Animation fluide du retour du thumb
-                        CreateTween(Thumb, AnimationSettings.ScaleDuration, {
-                            Size = UDim2.new(0, 14, 0, 14), 
-                            Position = UDim2.new(1, -7, 0.5, -7)
-                        }, Enum.EasingStyle.Back)
-                        
-                        -- Supprime le glow effect
-                        if thumbGlow and thumbGlow.Parent then
-                            CreateTween(thumbGlow, AnimationSettings.HoverDuration, {
-                                Thickness = 0,
-                                Transparency = 1
-                            })
-                            task.delay(AnimationSettings.HoverDuration + 0.1, function()
-                                if thumbGlow and thumbGlow.Parent then
-                                    thumbGlow:Destroy()
-                                end
-                            end)
-                        end
+                        TS:Create(Thumb, TweenInfo.new(0.2), {Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(1, -7, 0.5, -7)}):Play()
                     end
                 end)
                 
