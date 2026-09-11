@@ -1742,338 +1742,6 @@ function Library:CreateWindow(Settings)
         ScreenGui:Destroy()
     end)
 
-    -- =========================================================================
-    -- 🔍 GLOBAL SEARCH SYSTEM
-    -- =========================================================================
-    local SearchActive = false
-    local SearchResults = {}
-    local AllElements = {}  -- Stocke tous les éléments searchables
-    local SearchQuery = ""
-    local HighlightedElements = {}
-    
-    -- Container de recherche (masqué par défaut)
-    local SearchContainer = Create("Frame", {
-        Parent = Main,
-        Size = UDim2.new(1, -30, 0, 0),  -- Height = 0 initialement
-        Position = UDim2.new(0, 15, 0, 55),  -- Sous le TopBar
-        BackgroundColor3 = SelectedTheme.Second,
-        BackgroundTransparency = 0.1,
-        ZIndex = 1000,
-        ClipsDescendants = true,
-        Visible = false
-    })
-    AddCorner(SearchContainer, 8)
-    AddStroke(SearchContainer, SelectedTheme.Accent).Transparency = 0.3
-    
-    -- Input de recherche
-    local SearchBox = Create("TextBox", {
-        Parent = SearchContainer,
-        Size = UDim2.new(1, -80, 0, 35),
-        Position = UDim2.new(0, 15, 0, 10),
-        BackgroundColor3 = SelectedTheme.Main,
-        BackgroundTransparency = 0.3,
-        Text = "",
-        PlaceholderText = "🔍 Search elements... (Ctrl+F to open)",
-        Font = Library.GlobalFont,
-        TextColor3 = SelectedTheme.Text,
-        PlaceholderColor3 = SelectedTheme.TextDark,
-        TextSize = 14,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 1001,
-        ThemeTag = "Text"
-    })
-    AddCorner(SearchBox, 6)
-    AddStroke(SearchBox, SelectedTheme.TextDark).Transparency = 0.6
-    
-    Create("UIPadding", {
-        Parent = SearchBox,
-        PaddingLeft = UDim.new(0, 10),
-        PaddingRight = UDim.new(0, 10)
-    })
-    
-    -- Bouton fermer
-    local CloseSearchBtn = Create("TextButton", {
-        Parent = SearchContainer,
-        Size = UDim2.new(0, 30, 0, 30),
-        Position = UDim2.new(1, -45, 0, 12),
-        BackgroundColor3 = SelectedTheme.Error,
-        BackgroundTransparency = 0.3,
-        Text = "✕",
-        Font = Library.GlobalFont,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
-        TextSize = 14,
-        ZIndex = 1001,
-        AutoButtonColor = false
-    })
-    AddCorner(CloseSearchBtn, 6)
-    
-    -- Résultats de recherche
-    local SearchResultsFrame = Create("ScrollingFrame", {
-        Parent = SearchContainer,
-        Size = UDim2.new(1, -20, 0, 120),
-        Position = UDim2.new(0, 10, 0, 55),
-        BackgroundTransparency = 1,
-        ZIndex = 1001,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = SelectedTheme.Accent,
-        BorderSizePixel = 0,
-        CanvasSize = UDim2.new(0, 0, 0, 0)
-    })
-    
-    Create("UIListLayout", {
-        Parent = SearchResultsFrame,
-        Padding = UDim.new(0, 4)
-    })
-    
-    Create("UIPadding", {
-        Parent = SearchResultsFrame,
-        PaddingTop = UDim.new(0, 5),
-        PaddingLeft = UDim.new(0, 5),
-        PaddingRight = UDim.new(0, 5)
-    })
-    
-    -- Fonction pour enregistrer un élément comme searchable
-    local function RegisterSearchableElement(element, name, tab, block, type, callback)
-        table.insert(AllElements, {
-            Element = element,
-            Name = name,
-            Tab = tab,
-            Block = block or "General",
-            Type = type or "Unknown",
-            Callback = callback,
-            Keywords = name:lower()
-        })
-    end
-    
-    -- Fonction pour highlight un élément
-    local function HighlightElement(element)
-        if not element or not element.Parent then return end
-        
-        -- Crée un highlight frame
-        local highlight = Create("Frame", {
-            Parent = element,
-            Size = UDim2.fromScale(1, 1),
-            BackgroundColor3 = SelectedTheme.Accent,
-            BackgroundTransparency = 0.7,
-            ZIndex = element.ZIndex + 1000,
-            Name = "SearchHighlight"
-        })
-        AddCorner(highlight, 6)
-        
-        -- Animation pulsante
-        local pulse = TS:Create(highlight, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-            BackgroundTransparency = 0.9
-        })
-        pulse:Play()
-        
-        table.insert(HighlightedElements, highlight)
-        return highlight
-    end
-    
-    -- Fonction pour clear tous les highlights
-    local function ClearHighlights()
-        for _, highlight in pairs(HighlightedElements) do
-            if highlight and highlight.Parent then
-                highlight:Destroy()
-            end
-        end
-        HighlightedElements = {}
-    end
-    
-    -- Fonction pour effectuer la recherche
-    local function PerformSearch(query)
-        SearchQuery = query:lower()
-        SearchResults = {}
-        
-        -- Clear les résultats précédents
-        for _, child in pairs(SearchResultsFrame:GetChildren()) do
-            if child:IsA("TextButton") then
-                child:Destroy()
-            end
-        end
-        
-        if SearchQuery == "" then
-            SearchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-            return
-        end
-        
-        -- Recherche dans tous les éléments
-        for _, elementData in pairs(AllElements) do
-            if elementData.Keywords:find(SearchQuery, 1, true) then
-                table.insert(SearchResults, elementData)
-            end
-        end
-        
-        -- Crée les boutons de résultats
-        for i, result in pairs(SearchResults) do
-            local ResultBtn = Create("TextButton", {
-                Parent = SearchResultsFrame,
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = SelectedTheme.Main,
-                BackgroundTransparency = 0.5,
-                Text = "",
-                AutoButtonColor = false,
-                ZIndex = 1002
-            })
-            AddCorner(ResultBtn, 6)
-            
-            -- Icon par type
-            local typeIcons = {
-                Toggle = "🔘", Button = "🔲", Slider = "📊", 
-                Input = "📝", Dropdown = "📋", ColorPicker = "🎨",
-                Label = "📄", Keybind = "⌨️"
-            }
-            
-            Create("TextLabel", {
-                Parent = ResultBtn,
-                Size = UDim2.new(1, -10, 1, 0),
-                Position = UDim2.new(0, 8, 0, 0),
-                BackgroundTransparency = 1,
-                Text = (typeIcons[result.Type] or "🔧") .. " " .. result.Name,
-                Font = Library.GlobalFont,
-                TextColor3 = SelectedTheme.Text,
-                TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = Enum.TextTruncate.AtEnd,
-                ZIndex = 1003,
-                ThemeTag = "Text"
-            })
-            
-            Create("TextLabel", {
-                Parent = ResultBtn,
-                Size = UDim2.new(0, 100, 1, 0),
-                Position = UDim2.new(1, -105, 0, 0),
-                BackgroundTransparency = 1,
-                Text = result.Tab .. " > " .. result.Block,
-                Font = Library.GlobalFont,
-                TextColor3 = SelectedTheme.TextDark,
-                TextSize = 10,
-                TextXAlignment = Enum.TextXAlignment.Right,
-                TextTruncate = Enum.TextTruncate.AtEnd,
-                ZIndex = 1003,
-                ThemeTag = "TextDark"
-            })
-            
-            -- Hover effect
-            local hoverTween, leaveTween
-            ResultBtn.MouseEnter:Connect(function()
-                PlaySound("Hover")
-                if leaveTween then leaveTween:Cancel() end
-                hoverTween = TS:Create(ResultBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2})
-                hoverTween:Play()
-            end)
-            
-            ResultBtn.MouseLeave:Connect(function()
-                if hoverTween then hoverTween:Cancel() end
-                leaveTween = TS:Create(ResultBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.5})
-                leaveTween:Play()
-            end)
-            
-            -- Click to navigate
-            ResultBtn.MouseButton1Click:Connect(function()
-                PlaySound("Click")
-                
-                -- Clear highlights précédents
-                ClearHighlights()
-                
-                -- Navigate vers le tab si nécessaire (implémentation à ajouter)
-                -- Highlight l'élément
-                HighlightElement(result.Element)
-                
-                -- Execute callback si disponible
-                if result.Callback then
-                    result.Callback()
-                end
-                
-                -- Ferme la recherche après 2 secondes
-                task.spawn(function()
-                    task.wait(2)
-                    CloseSearch()
-                end)
-            end)
-        end
-        
-        -- Update canvas size
-        SearchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, #SearchResults * 34 + 10)
-    end
-    
-    -- Fonction pour ouvrir la recherche
-    local function OpenSearch()
-        if SearchActive then return end
-        SearchActive = true
-        
-        PlaySound("Open")
-        SearchContainer.Visible = true
-        
-        -- Animation d'ouverture
-        TS:Create(SearchContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, -30, 0, 180)
-        }):Play()
-        
-        -- Focus sur la search box
-        task.spawn(function()
-            task.wait(0.1)
-            SearchBox:CaptureFocus()
-        end)
-    end
-    
-    -- Fonction pour fermer la recherche
-    local function CloseSearch()
-        if not SearchActive then return end
-        SearchActive = false
-        
-        PlaySound("Close")
-        ClearHighlights()
-        
-        -- Animation de fermeture
-        TS:Create(SearchContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, -30, 0, 0)
-        }):Play()
-        
-        task.spawn(function()
-            task.wait(0.3)
-            SearchContainer.Visible = false
-            SearchBox.Text = ""
-            PerformSearch("") -- Clear results
-        end)
-    end
-    
-    -- Event handlers
-    SearchBox.Changed:Connect(function(property)
-        if property == "Text" then
-            PerformSearch(SearchBox.Text)
-        end
-    end)
-    
-    SearchBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed and #SearchResults > 0 then
-            -- Enter sur le premier résultat
-            if SearchResults[1].Callback then
-                SearchResults[1].Callback()
-            end
-        end
-    end)
-    
-    CloseSearchBtn.MouseButton1Click:Connect(CloseSearch)
-    
-    -- Raccourci clavier Ctrl+F
-    UIS.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        
-        if input.KeyCode == Enum.KeyCode.F and (UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl)) then
-            if SearchActive then
-                CloseSearch()
-            else
-                OpenSearch()
-            end
-        elseif input.KeyCode == Enum.KeyCode.Escape and SearchActive then
-            CloseSearch()
-        end
-    end)
-    
-    -- Expose la fonction pour enregistrer les éléments
-    Library.RegisterSearchable = RegisterSearchableElement
-
     local TabContainer = Create("ScrollingFrame", {
         Parent = Main,
         Size = UDim2.new(0, 165, 1, -171),
@@ -2750,8 +2418,7 @@ function Library:CreateWindow(Settings)
                         if val == nil then return end
                         if State == val then return end
                         UpdateState(val)
-                    end,
-                    Element = Wrapper  -- 🔍 Référence pour la recherche
+                    end
                 }
             end
 
@@ -2912,10 +2579,7 @@ function Library:CreateWindow(Settings)
                     end
                 end)
 
-                Library.Items[Flag] = {
-                    Set = Update,
-                    Element = Frame  -- 🔍 Référence pour la recherche
-                }
+                Library.Items[Flag] = {Set = Update}
             end
 
             function Elements:CreateInput(Cfg)
@@ -3022,10 +2686,7 @@ function Library:CreateWindow(Settings)
                     Update(Box.Text)
                 end)
                 
-                Library.Items[Flag] = {
-                    Set = Update,
-                    Element = Wrapper  -- 🔍 Référence pour la recherche
-                }
+                Library.Items[Flag] = {Set = Update}
             end
 
             function Elements:CreateDropdown(Cfg)
@@ -3524,8 +3185,7 @@ function Library:CreateWindow(Settings)
                         if IsMultiSelect and type(items) == "table" then
                             Update(items)
                         end
-                    end,
-                    Element = Drop  -- 🔍 Référence pour la recherche
+                    end
                 }
                 
                 return Library.Items[Flag]
@@ -4358,46 +4018,5 @@ function Library:CreateWindow(Settings)
 
     return Funcs
 end
-
--- =========================================================================
--- 🔍 AUTO-REGISTRATION SYSTEM FOR SEARCH GLOBAL
--- =========================================================================
--- Ce système enregistre automatiquement tous les éléments créés
-task.spawn(function()
-    task.wait(2) -- Attend que l'UI soit complètement chargée
-    
-    if Library.RegisterSearchable then
-        -- Parcourt tous les éléments dans Library.Items
-        for flag, item in pairs(Library.Items) do
-            if item and item.Element then
-                -- Essaie de déterminer le type d'élément
-                local elementType = "Unknown"
-                local element = item.Element
-                
-                if element then
-                    -- Détermine le type en fonction des propriétés
-                    if element:FindFirstChild("Toggle") then
-                        elementType = "Toggle"
-                    elseif element:FindFirstChild("Fill") then
-                        elementType = "Slider"  
-                    elseif element:FindFirstChild("Input") then
-                        elementType = "Input"
-                    elseif element:FindFirstChild("Container") then
-                        elementType = "Dropdown"
-                    elseif element:FindFirstChild("Preview") then
-                        elementType = "ColorPicker"
-                    elseif element.ClassName == "TextButton" then
-                        elementType = "Button"
-                    elseif element:FindFirstChild("Label") then
-                        elementType = "Label"
-                    end
-                    
-                    -- Enregistre l'élément
-                    Library.RegisterSearchable(element, flag, "Unknown", "Unknown", elementType)
-                end
-            end
-        end
-    end
-end)
 
 return Library
