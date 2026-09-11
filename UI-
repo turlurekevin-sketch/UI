@@ -18,36 +18,182 @@ local LP = Plrs.LocalPlayer
 local Mouse = LP:GetMouse()
 local Stats = game:GetService("Stats")
 
--- 🔊 SYSTÈME DE SONS
-local Sounds = {
-    Click = {Id = "rbxassetid://6895079853", Volume = 0.3, Pitch = 1.0},
-    Hover = {Id = "rbxassetid://10066936758", Volume = 0.15, Pitch = 1.2},
-    Toggle = {Id = "rbxassetid://6895079853", Volume = 0.25, Pitch = 1.1},
-    Notification = {Id = "rbxassetid://9770089602", Volume = 0.4, Pitch = 1.0},
-    Open = {Id = "rbxassetid://6895079853", Volume = 0.35, Pitch = 0.9},
-    Close = {Id = "rbxassetid://6895079853", Volume = 0.3, Pitch = 0.8},
-    Success = {Id = "rbxassetid://6026984224", Volume = 0.35, Pitch = 1.0},
-    Error = {Id = "rbxassetid://1864343113", Volume = 0.3, Pitch = 1.0}
+-- 🔊 SYSTÈME DE CONTRÔLE DE VOLUME & SOUND PACKS
+Library.MasterVolume = 0.5  -- Volume global (0 à 1)
+Library.SoundsEnabled = true
+Library.CurrentSoundPack = "Modern"  -- Pack de sons actuel
+
+-- 🎵 SOUND PACKS DISPONIBLES
+local SoundPacks = {
+    Modern = {
+        Click = {Id = "rbxassetid://6895079853", Volume = 0.3, Pitch = 1.0},
+        Hover = {Id = "rbxassetid://10066936758", Volume = 0.15, Pitch = 1.2},
+        Toggle = {Id = "rbxassetid://6895079853", Volume = 0.25, Pitch = 1.1},
+        Notification = {Id = "rbxassetid://9770089602", Volume = 0.4, Pitch = 1.0},
+        Open = {Id = "rbxassetid://6895079853", Volume = 0.35, Pitch = 0.9},
+        Close = {Id = "rbxassetid://6895079853", Volume = 0.3, Pitch = 0.8},
+        Success = {Id = "rbxassetid://6026984224", Volume = 0.35, Pitch = 1.0},
+        Error = {Id = "rbxassetid://1864343113", Volume = 0.3, Pitch = 1.0}
+    },
+    
+    Retro = {
+        Click = {Id = "rbxassetid://131961136", Volume = 0.25, Pitch = 1.5},
+        Hover = {Id = "rbxassetid://131961136", Volume = 0.1, Pitch = 2.0},
+        Toggle = {Id = "rbxassetid://131961136", Volume = 0.2, Pitch = 1.3},
+        Notification = {Id = "rbxassetid://131961136", Volume = 0.3, Pitch = 1.0},
+        Open = {Id = "rbxassetid://131961136", Volume = 0.3, Pitch = 0.8},
+        Close = {Id = "rbxassetid://131961136", Volume = 0.25, Pitch = 0.6},
+        Success = {Id = "rbxassetid://131961136", Volume = 0.35, Pitch = 1.8},
+        Error = {Id = "rbxassetid://131961136", Volume = 0.3, Pitch = 0.5}
+    },
+    
+    SciFi = {
+        Click = {Id = "rbxassetid://421058404", Volume = 0.4, Pitch = 1.2},
+        Hover = {Id = "rbxassetid://421058404", Volume = 0.2, Pitch = 1.8},
+        Toggle = {Id = "rbxassetid://421058404", Volume = 0.3, Pitch = 1.0},
+        Notification = {Id = "rbxassetid://421058404", Volume = 0.45, Pitch = 0.8},
+        Open = {Id = "rbxassetid://421058404", Volume = 0.4, Pitch = 0.7},
+        Close = {Id = "rbxassetid://421058404", Volume = 0.35, Pitch = 0.9},
+        Success = {Id = "rbxassetid://421058404", Volume = 0.4, Pitch = 1.5},
+        Error = {Id = "rbxassetid://421058404", Volume = 0.4, Pitch = 0.4}
+    },
+    
+    Minimal = {
+        Click = {Id = "rbxassetid://6895079853", Volume = 0.15, Pitch = 1.0},
+        Hover = {Id = "rbxassetid://10066936758", Volume = 0.05, Pitch = 1.0},
+        Toggle = {Id = "rbxassetid://6895079853", Volume = 0.1, Pitch = 1.0},
+        Notification = {Id = "rbxassetid://9770089602", Volume = 0.2, Pitch = 1.0},
+        Open = {Id = "rbxassetid://6895079853", Volume = 0.15, Pitch = 1.0},
+        Close = {Id = "rbxassetid://6895079853", Volume = 0.1, Pitch = 1.0},
+        Success = {Id = "rbxassetid://6026984224", Volume = 0.15, Pitch = 1.0},
+        Error = {Id = "rbxassetid://1864343113", Volume = 0.1, Pitch = 1.0}
+    },
+    
+    Silent = {
+        Click = {Id = "", Volume = 0, Pitch = 1.0},
+        Hover = {Id = "", Volume = 0, Pitch = 1.0},
+        Toggle = {Id = "", Volume = 0, Pitch = 1.0},
+        Notification = {Id = "", Volume = 0, Pitch = 1.0},
+        Open = {Id = "", Volume = 0, Pitch = 1.0},
+        Close = {Id = "", Volume = 0, Pitch = 1.0},
+        Success = {Id = "", Volume = 0, Pitch = 1.0},
+        Error = {Id = "", Volume = 0, Pitch = 1.0}
+    }
 }
 
-Library.SoundsEnabled = true
+-- 🎬 ANIMATIONS AMÉLIORÉES (EasingStyles plus fluides)
+Library.AnimationSpeed = 0.3  -- Vitesse globale des animations
+Library.EasingStyle = Enum.EasingStyle.Quart  -- Style par défaut
+Library.EasingDirection = Enum.EasingDirection.Out
+
+-- ✨ SYSTÈME D'EFFETS VISUELS
+Library.ParticlesEnabled = true
+Library.EffectsIntensity = 0.5  -- Intensité des effets (0 à 1)
+
+-- 📏 SYSTÈME DE SCALING UI
+Library.UIScale = 1.0  -- Échelle globale de l'UI (0.5 à 2.0)
+Library.TextScale = 1.0  -- Échelle du texte (0.7 à 1.5)
+Library.BlocksCollapsible = true  -- Blocs repliables
 
 local function PlaySound(soundName)
     if not Library.SoundsEnabled then return end
     
-    local soundData = Sounds[soundName]
-    if not soundData then return end
+    local currentPack = SoundPacks[Library.CurrentSoundPack] or SoundPacks.Modern
+    local soundData = currentPack[soundName]
+    if not soundData or soundData.Id == "" then return end
     
     task.spawn(function()
         local sound = Instance.new("Sound")
         sound.SoundId = soundData.Id
-        sound.Volume = soundData.Volume
+        sound.Volume = soundData.Volume * Library.MasterVolume  -- Applique le volume global
         sound.PlaybackSpeed = soundData.Pitch
         sound.Parent = SoundService
         sound:Play()
         
         sound.Ended:Connect(function()
             sound:Destroy()
+        end)
+        
+        -- Sécurité : supprime après 5 secondes max
+        task.wait(5)
+        if sound.Parent then
+            sound:Destroy()
+        end
+    end)
+end
+
+-- 🌟 FONCTION POUR CRÉER DES PARTICULES
+local function CreateParticleEffect(parent, effectType)
+    if not Library.ParticlesEnabled or not parent then return end
+    
+    local effect = nil
+    
+    if effectType == "Hover" then
+        -- Effet scintillement sur hover
+        effect = Instance.new("Frame")
+        effect.Name = "HoverEffect"
+        effect.Size = UDim2.new(1, 4, 1, 4)
+        effect.Position = UDim2.new(0, -2, 0, -2)
+        effect.BackgroundTransparency = 0.8
+        effect.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        effect.BorderSizePixel = 0
+        effect.ZIndex = parent.ZIndex + 1
+        effect.Parent = parent
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = effect
+        
+        -- Animation scintillement
+        local tween = TS:Create(effect, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            BackgroundTransparency = 0.95
+        })
+        tween:Play()
+        
+        return effect
+        
+    elseif effectType == "Click" then
+        -- Effet ripple sur click
+        effect = Instance.new("Frame")
+        effect.Name = "ClickEffect"
+        effect.Size = UDim2.new(0, 0, 0, 0)
+        effect.Position = UDim2.new(0.5, 0, 0.5, 0)
+        effect.AnchorPoint = Vector2.new(0.5, 0.5)
+        effect.BackgroundTransparency = 0.3
+        effect.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+        effect.BorderSizePixel = 0
+        effect.ZIndex = parent.ZIndex + 2
+        effect.Parent = parent
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = effect
+        
+        -- Animation ripple
+        local tween = TS:Create(effect, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1.2, 0, 1.2, 0),
+            BackgroundTransparency = 1
+        })
+        tween:Play()
+        
+        tween.Completed:Connect(function()
+            effect:Destroy()
+        end)
+        
+        return effect
+    end
+end
+
+-- 🎭 FONCTION D'ANIMATION AMÉLIORÉE
+local function SmoothTween(object, properties, duration, customEasing)
+    duration = duration or Library.AnimationSpeed
+    local easingStyle = customEasing or Library.EasingStyle
+    local easingDir = Library.EasingDirection
+    
+    local tween = TS:Create(object, TweenInfo.new(duration, easingStyle, easingDir), properties)
+    tween:Play()
+    return tween
+end
         end)
         
         task.delay(3, function()
@@ -2127,6 +2273,9 @@ function Library:CreateWindow(Settings)
             end)
         end
 
+        -- 🎬 TYPES DE TRANSITIONS POUR TABS
+        Library.TabTransitionType = Library.TabTransitionType or "Slide"  -- Slide, Fade, Scale, Rotate, None
+        
         local function Activate()
             PlaySound("Click") -- 🔊 Son click sur tab
             if ActiveTab and ActiveTab.Btn == TabBtn then
@@ -2137,51 +2286,141 @@ function Library:CreateWindow(Settings)
             local Direction = (OldTab and MyIndex > OldTab.Index) and "Down" or "Up"
             ActiveTab = {Btn = TabBtn, Page = Page, Index = MyIndex}
             
+            -- 🎨 ANIMATIONS AMÉLIORÉES POUR LES TABS
             for _, v in pairs(TabContainer:GetChildren()) do 
                 if v:IsA("TextButton") then 
-                    TS:Create(v, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                    SmoothTween(v, {BackgroundTransparency = 1}, Library.AnimationSpeed)
                     local lbl = v:FindFirstChild("TabLabel")
                     local line = v:FindFirstChild("ActiveLine")
                     local icon = v:FindFirstChild("TabIcon")
                     
                     if lbl then
                         local isIconTab = icon ~= nil
-                        TS:Create(lbl, TweenInfo.new(0.3), {TextColor3 = SelectedTheme.TextDark, Position = UDim2.new(0, isIconTab and 38 or 20, 0, 0)}):Play()
+                        SmoothTween(lbl, {
+                            TextColor3 = SelectedTheme.TextDark, 
+                            Position = UDim2.new(0, isIconTab and 38 or 20, 0, 0)
+                        }, Library.AnimationSpeed)
                     end
                     if line then
-                        TS:Create(line, TweenInfo.new(0.3), {Size = UDim2.new(0, 3, 0, 0)}):Play()
+                        SmoothTween(line, {Size = UDim2.new(0, 3, 0, 0)}, Library.AnimationSpeed, Enum.EasingStyle.Back)
                     end
                     if icon then
-                        TS:Create(icon, TweenInfo.new(0.3), {ImageColor3 = SelectedTheme.TextDark}):Play()
+                        SmoothTween(icon, {ImageColor3 = SelectedTheme.TextDark}, Library.AnimationSpeed)
                     end
                 end 
             end
 
-            TS:Create(TabBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
-            TS:Create(TabLabel, TweenInfo.new(0.3), {TextColor3 = SelectedTheme.Text, Position = UDim2.new(0, HasIcon and 42 or 24, 0, 0)}):Play()
+            -- Animation du tab actif améliorée
+            SmoothTween(TabBtn, {BackgroundTransparency = 0.5}, Library.AnimationSpeed)
+            SmoothTween(TabLabel, {
+                TextColor3 = SelectedTheme.Text, 
+                Position = UDim2.new(0, HasIcon and 42 or 24, 0, 0)
+            }, Library.AnimationSpeed)
             
             if ActiveLine then
-                TS:Create(ActiveLine, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 3, 0, 18)}):Play()
+                SmoothTween(ActiveLine, {Size = UDim2.new(0, 3, 0, 18)}, Library.AnimationSpeed, Enum.EasingStyle.Back)
             end
             if TabIcon then
-                TS:Create(TabIcon, TweenInfo.new(0.3), {ImageColor3 = SelectedTheme.ElementAccent}):Play()
+                SmoothTween(TabIcon, {ImageColor3 = SelectedTheme.ElementAccent}, Library.AnimationSpeed)
             end
 
+            -- ✨ TRANSITIONS DE PAGES AMÉLIORÉES
             if OldTab then
                 local OldPage = OldTab.Page
-                local OutPos = (Direction == "Down") and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 1, 0)
-                TS:Create(OldPage, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = OutPos}):Play()
-                task.delay(0.4, function()
-                    if ActiveTab.Page ~= OldPage then
-                        OldPage.Visible = false
-                    end
-                end)
+                
+                -- Différents types de transitions selon le paramètre
+                if Library.TabTransitionType == "Fade" then
+                    -- ⚡ TRANSITION FADE
+                    SmoothTween(OldPage, {
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(0.95, 0, 0.95, 0),
+                        Position = UDim2.new(0.025, 0, 0.025, 0)
+                    }, Library.AnimationSpeed * 0.6, Enum.EasingStyle.Quad):andThen(function()
+                        if ActiveTab.Page ~= OldPage then
+                            OldPage.Visible = false
+                            OldPage.BackgroundTransparency = 0
+                            OldPage.Size = UDim2.new(1, 0, 1, 0)
+                            OldPage.Position = UDim2.new(0, 0, 0, 0)
+                        end
+                    end)
+                    
+                elseif Library.TabTransitionType == "Scale" then
+                    -- 🔄 TRANSITION SCALE
+                    SmoothTween(OldPage, {
+                        Size = UDim2.new(0.8, 0, 0.8, 0),
+                        Position = UDim2.new(0.1, 0, 0.1, 0),
+                        BackgroundTransparency = 0.5
+                    }, Library.AnimationSpeed * 0.7, Enum.EasingStyle.Back):andThen(function()
+                        if ActiveTab.Page ~= OldPage then
+                            OldPage.Visible = false
+                            OldPage.Size = UDim2.new(1, 0, 1, 0)
+                            OldPage.Position = UDim2.new(0, 0, 0, 0)
+                            OldPage.BackgroundTransparency = 1
+                        end
+                    end)
+                    
+                elseif Library.TabTransitionType == "Slide" then
+                    -- 📱 TRANSITION SLIDE (améliorée)
+                    local OutPos = (Direction == "Down") and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 1, 0)
+                    SmoothTween(OldPage, {Position = OutPos}, Library.AnimationSpeed * 1.3, Enum.EasingStyle.Quart):andThen(function()
+                        if ActiveTab.Page ~= OldPage then
+                            OldPage.Visible = false
+                            OldPage.Position = UDim2.new(0, 0, 0, 0)
+                        end
+                    end)
+                    
+                elseif Library.TabTransitionType == "None" then
+                    -- 🚫 PAS DE TRANSITION
+                    OldPage.Visible = false
+                    
+                else
+                    -- 🔄 TRANSITION PAR DÉFAUT (Slide)
+                    local OutPos = (Direction == "Down") and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 1, 0)
+                    SmoothTween(OldPage, {Position = OutPos}, Library.AnimationSpeed * 1.3):andThen(function()
+                        if ActiveTab.Page ~= OldPage then
+                            OldPage.Visible = false
+                            OldPage.Position = UDim2.new(0, 0, 0, 0)
+                        end
+                    end)
+                end
             end
             
+            -- 🎭 ANIMATION D'ENTRÉE DE LA NOUVELLE PAGE
             Page.Visible = true
-            Page.Position = (Direction == "Down") and UDim2.new(0, 0, 1, 0) or (Direction == "Up" and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 0, 0))
-            if Direction ~= "None" then
-                TS:Create(Page, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+            
+            if Library.TabTransitionType == "Fade" then
+                -- Fade In
+                Page.BackgroundTransparency = 1
+                Page.Size = UDim2.new(1.05, 0, 1.05, 0)
+                Page.Position = UDim2.new(-0.025, 0, -0.025, 0)
+                SmoothTween(Page, {
+                    BackgroundTransparency = 0,
+                    Size = UDim2.new(1, 0, 1, 0),
+                    Position = UDim2.new(0, 0, 0, 0)
+                }, Library.AnimationSpeed * 0.8, Enum.EasingStyle.Quad)
+                
+            elseif Library.TabTransitionType == "Scale" then
+                -- Scale In
+                Page.Size = UDim2.new(0.7, 0, 0.7, 0)
+                Page.Position = UDim2.new(0.15, 0, 0.15, 0)
+                SmoothTween(Page, {
+                    Size = UDim2.new(1, 0, 1, 0),
+                    Position = UDim2.new(0, 0, 0, 0)
+                }, Library.AnimationSpeed * 0.9, Enum.EasingStyle.Elastic)
+                
+            elseif Library.TabTransitionType == "Slide" then
+                -- Slide In (amélioré)
+                Page.Position = (Direction == "Down") and UDim2.new(0, 0, 1, 0) or (Direction == "Up" and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 0, 0))
+                if Direction ~= "None" then
+                    SmoothTween(Page, {Position = UDim2.new(0, 0, 0, 0)}, Library.AnimationSpeed * 1.3, Enum.EasingStyle.Quart)
+                end
+                
+            elseif Library.TabTransitionType ~= "None" then
+                -- Animation par défaut
+                Page.Position = (Direction == "Down") and UDim2.new(0, 0, 1, 0) or (Direction == "Up" and UDim2.new(0, 0, -1, 0) or UDim2.new(0, 0, 0, 0))
+                if Direction ~= "None" then
+                    SmoothTween(Page, {Position = UDim2.new(0, 0, 0, 0)}, Library.AnimationSpeed * 1.3)
+                end
             end
         end
         
@@ -2214,24 +2453,24 @@ function Library:CreateWindow(Settings)
                 ElementOrder = ElementOrder + 1
                 local Lab = Create("TextLabel", {
                     Parent = TargetParent,
-                    Size = UDim2.new(1, 0, 0, 20),
+                    Size = UDim2.new(1, 0, 0, 20 * Library.UIScale),
                     BackgroundTransparency = 1,
                     Text = Text,
                     Font = Library.GlobalFontBold,
                     TextColor3 = SelectedTheme.Text,
-                    TextSize = 13,
+                    TextSize = 13 * Library.TextScale,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     LayoutOrder = ElementOrder,
                     ZIndex = 8,
                     ThemeTag = "Text"
                 })
-                Create("UIPadding", { Parent = Lab, PaddingLeft = UDim.new(0, 6) })
+                Create("UIPadding", { Parent = Lab, PaddingLeft = UDim.new(0, 6 * Library.UIScale) })
             end
 
             function Elements:CreateLabel(Cfg)
                 ElementOrder = ElementOrder + 1
                 local Text = Cfg.Text or Cfg.Name or "Label"
-                local TextSize = Cfg.TextSize or 13
+                local TextSize = (Cfg.TextSize or 13) * Library.TextScale
                 local TextColor = Cfg.TextColor or SelectedTheme.TextDark
                 local Centered = Cfg.Centered or false
                 
@@ -2253,10 +2492,10 @@ function Library:CreateWindow(Settings)
                 
                 Create("UIPadding", { 
                     Parent = Lab, 
-                    PaddingLeft = UDim.new(0, Centered and 10 or 10),
-                    PaddingRight = UDim.new(0, 10),
-                    PaddingTop = UDim.new(0, 4),
-                    PaddingBottom = UDim.new(0, 4)
+                    PaddingLeft = UDim.new(0, (Centered and 10 or 10) * Library.UIScale),
+                    PaddingRight = UDim.new(0, 10 * Library.UIScale),
+                    PaddingTop = UDim.new(0, 4 * Library.UIScale),
+                    PaddingBottom = UDim.new(0, 4 * Library.UIScale)
                 })
                 
                 -- Permet de mettre à jour le texte dynamiquement
@@ -2302,12 +2541,50 @@ function Library:CreateWindow(Settings)
                 })
                 
                 CreateRipple(Btn, SelectedTheme.Accent)
-                DefaultHover(Btn)
+                
+                -- ✨ NOUVEAUX EFFETS VISUELS
+                local hoverEffect = nil
+                
+                -- 🎨 Hover amélioré avec particules
+                Btn.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                    hoverEffect = CreateParticleEffect(Btn, "Hover")
+                    
+                    -- Animation hover fluide
+                    SmoothTween(Btn, {
+                        BackgroundTransparency = 0.3,
+                        Size = UDim2.new(1, 2, 0, 36)
+                    }, 0.2, Enum.EasingStyle.Quad)
+                end)
+                
+                Btn.MouseLeave:Connect(function()
+                    if hoverEffect then
+                        hoverEffect:Destroy()
+                        hoverEffect = nil
+                    end
+                    
+                    -- Animation retour fluide
+                    SmoothTween(Btn, {
+                        BackgroundTransparency = 0.5,
+                        Size = UDim2.new(1, 0, 0, 34)
+                    }, 0.2, Enum.EasingStyle.Quad)
+                end)
                 
                 Btn.MouseButton1Click:Connect(function()
-                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -4, 0, 30), Position = UDim2.new(0, 2, 0, 2)}):Play()
-                    task.wait(0.1)
-                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 0)}):Play()
+                    PlaySound("Click")
+                    CreateParticleEffect(Btn, "Click")
+                    
+                    -- Animation click améliorée avec bounce
+                    SmoothTween(Btn, {
+                        Size = UDim2.new(1, -4, 0, 30),
+                        BackgroundTransparency = 0.2
+                    }, 0.1, Enum.EasingStyle.Back):andThen(function()
+                        SmoothTween(Btn, {
+                            Size = UDim2.new(1, 2, 0, 36),
+                            BackgroundTransparency = 0.3
+                        }, 0.15, Enum.EasingStyle.Elastic)
+                    end)
+                    
                     if Cfg.Callback then
                         Cfg.Callback()
                     end
@@ -3270,16 +3547,17 @@ function Library:CreateWindow(Settings)
                     ZIndex = 5,
                     ThemeTag = "Second"
                 })
-                AddCorner(BlockFrame, 8)
+                AddCorner(BlockFrame, 8 * Library.UIScale)
 
-                local BlockStroke = Create("UIStroke", { Parent = BlockFrame, Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1 })
+                local BlockStroke = Create("UIStroke", { Parent = BlockFrame, Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1 * Library.UIScale })
                 local BlockGrad = Create("UIGradient", { Parent = BlockStroke, Color = SelectedTheme.Gradient })
                 table.insert(Library.GradientObjects, BlockGrad)
                 
+                -- ➖ Ligne de séparation avec scaling
                 Create("Frame", {
                     Parent = BlockFrame,
-                    Size = UDim2.new(1, -24, 0, 1),
-                    Position = UDim2.new(0, 12, 0, 36),
+                    Size = UDim2.new(1, -24 * Library.UIScale, 0, 1 * Library.UIScale),
+                    Position = UDim2.new(0, 12 * Library.UIScale, 0, 36 * Library.UIScale),
                     BackgroundColor3 = SelectedTheme.TextDark,
                     BackgroundTransparency = 0.8,
                     BorderSizePixel = 0,
@@ -3288,47 +3566,134 @@ function Library:CreateWindow(Settings)
                 })
                 
                 local HasIcon = (BlockCfg.ImageID ~= nil and BlockCfg.ImageID ~= "")
-                local TitleOffsetX = 12
+                local TitleOffsetX = 12 * Library.UIScale
                 
+                -- 🖼️ Icône du bloc (si présente)
                 if HasIcon then
                     local BlockIcon = Create("ImageLabel", {
                         Parent = BlockFrame,
-                        Size = UDim2.new(0, 18, 0, 18),
-                        Position = UDim2.new(0, 12, 0, 9),
+                        Size = UDim2.new(0, 18 * Library.UIScale, 0, 18 * Library.UIScale),
+                        Position = UDim2.new(0, 12 * Library.UIScale, 0, 9 * Library.UIScale),
                         BackgroundTransparency = 1,
                         ImageColor3 = SelectedTheme.TextDark,
                         ZIndex = 6
                     })
                     SetImageAsync(BlockIcon, "Image", BlockCfg.ImageID)
-                    TitleOffsetX = 36
+                    TitleOffsetX = 36 * Library.UIScale
                     table.insert(Library.ThemeObjects.TextDark, BlockIcon)
                 end
                 
-                Create("TextLabel", {
+                -- 🔽 BOUTON COLLAPSE (flèche haut-droite)
+                local isCollapsed = false
+                local CollapseBtn = nil
+                
+                if Library.BlocksCollapsible then
+                    CollapseBtn = Create("TextButton", {
+                        Parent = BlockFrame,
+                        Size = UDim2.new(0, 24 * Library.UIScale, 0, 24 * Library.UIScale),
+                        Position = UDim2.new(1, -30 * Library.UIScale, 0, 6 * Library.UIScale),
+                        BackgroundColor3 = SelectedTheme.Main,
+                        BackgroundTransparency = 0.8,
+                        Text = "▼",
+                        Font = Enum.Font.GothamBold,
+                        TextColor3 = SelectedTheme.TextDark,
+                        TextSize = 10 * Library.TextScale,
+                        ZIndex = 7,
+                        AutoButtonColor = false,
+                        ThemeTag = "Main"
+                    })
+                    AddCorner(CollapseBtn, 4 * Library.UIScale)
+                    
+                    -- Effet hover sur le bouton collapse
+                    local collapseHoverTween, collapseLeaveTween
+                    CollapseBtn.MouseEnter:Connect(function()
+                        PlaySound("Hover")
+                        if collapseLeaveTween then collapseLeaveTween:Cancel() end
+                        collapseHoverTween = SmoothTween(CollapseBtn, {
+                            BackgroundTransparency = 0.3,
+                            TextColor3 = SelectedTheme.ElementAccent
+                        }, 0.15)
+                    end)
+                    
+                    CollapseBtn.MouseLeave:Connect(function()
+                        if collapseHoverTween then collapseHoverTween:Cancel() end
+                        collapseLeaveTween = SmoothTween(CollapseBtn, {
+                            BackgroundTransparency = 0.8,
+                            TextColor3 = SelectedTheme.TextDark
+                        }, 0.15)
+                    end)
+                end
+                
+                -- 📝 Titre du bloc avec scaling
+                local BlockTitle = Create("TextLabel", {
                     Parent = BlockFrame,
-                    Size = UDim2.new(1, -TitleOffsetX - 12, 0, 36),
+                    Size = UDim2.new(1, -TitleOffsetX - (Library.BlocksCollapsible and 42 or 12) * Library.UIScale, 0, 36 * Library.UIScale),
                     Position = UDim2.new(0, TitleOffsetX, 0, 0),
                     BackgroundTransparency = 1,
                     Text = BlockName,
                     Font = Library.GlobalFontBold,
                     TextColor3 = SelectedTheme.Text,
-                    TextSize = 14,
+                    TextSize = 14 * Library.TextScale,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     ZIndex = 6,
                     ThemeTag = "Text"
                 })
                 
+                -- 📦 Contenu du bloc
                 local BlockContent = Create("Frame", {
                     Parent = BlockFrame,
                     Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 0, 42),
+                    Position = UDim2.new(0, 0, 0, 42 * Library.UIScale),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
-                    ZIndex = 5
+                    ZIndex = 5,
+                    Visible = true
                 })
                 
-                Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
-                Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
+                Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6 * Library.UIScale) })
+                Create("UIPadding", { 
+                    Parent = BlockContent, 
+                    PaddingTop = UDim.new(0, 2 * Library.UIScale), 
+                    PaddingBottom = UDim.new(0, 10 * Library.UIScale), 
+                    PaddingLeft = UDim.new(0, 8 * Library.UIScale), 
+                    PaddingRight = UDim.new(0, 8 * Library.UIScale) 
+                })
+                
+                -- 🔽 LOGIQUE DE COLLAPSE
+                if CollapseBtn then
+                    CollapseBtn.MouseButton1Click:Connect(function()
+                        PlaySound("Toggle")
+                        isCollapsed = not isCollapsed
+                        
+                        if isCollapsed then
+                            -- 📦 Replier le bloc
+                            SmoothTween(BlockContent, {
+                                Size = UDim2.new(1, 0, 0, 0)
+                            }, Library.AnimationSpeed * 0.6, Enum.EasingStyle.Quart):andThen(function()
+                                BlockContent.Visible = false
+                            end)
+                            
+                            SmoothTween(CollapseBtn, {
+                                Rotation = -90  -- Flèche vers la droite
+                            }, Library.AnimationSpeed * 0.6, Enum.EasingStyle.Back)
+                            
+                            CollapseBtn.Text = "▶"
+                            
+                        else
+                            -- 📖 Déplier le bloc
+                            BlockContent.Visible = true
+                            SmoothTween(BlockContent, {
+                                Size = UDim2.new(1, 0, 0, 0)  -- AutomaticSize s'occupe de la hauteur
+                            }, Library.AnimationSpeed * 0.8, Enum.EasingStyle.Quart)
+                            
+                            SmoothTween(CollapseBtn, {
+                                Rotation = 0  -- Flèche vers le bas
+                            }, Library.AnimationSpeed * 0.8, Enum.EasingStyle.Back)
+                            
+                            CollapseBtn.Text = "▼"
+                        end
+                    end)
+                end
                 
                 return GetElements(BlockContent)
             end
@@ -3688,3 +4053,268 @@ function Library:CreateWindow(Settings)
 end
 
 return Library
+-- ⚙️ FONCTIONS DE CONTRÔLE DES NOUVELLES FONCTIONNALITÉS
+
+-- 🔊 Contrôle du volume et des sons
+function Library:SetMasterVolume(volume)
+    Library.MasterVolume = math.clamp(volume or 0.5, 0, 1)
+end
+
+function Library:SetSoundPack(packName)
+    if SoundPacks[packName] then
+        Library.CurrentSoundPack = packName
+        PlaySound("Click")  -- Son de confirmation
+        return true
+    end
+    return false
+end
+
+function Library:GetSoundPacks()
+    local packs = {}
+    for name, _ in pairs(SoundPacks) do
+        table.insert(packs, name)
+    end
+    return packs
+end
+
+function Library:ToggleSounds(enabled)
+    Library.SoundsEnabled = enabled ~= false
+end
+
+-- 🎬 Contrôle des animations
+function Library:SetAnimationSpeed(speed)
+    Library.AnimationSpeed = math.clamp(speed or 0.3, 0.05, 2.0)
+end
+
+function Library:SetEasingStyle(style, direction)
+    Library.EasingStyle = style or Enum.EasingStyle.Quart
+    Library.EasingDirection = direction or Enum.EasingDirection.Out
+end
+
+-- ✨ Contrôle des effets visuels
+function Library:ToggleParticles(enabled)
+    Library.ParticlesEnabled = enabled ~= false
+end
+
+function Library:SetEffectsIntensity(intensity)
+    Library.EffectsIntensity = math.clamp(intensity or 0.5, 0, 1)
+end
+
+-- 🔄 Contrôle des transitions de tabs
+function Library:SetTabTransition(transitionType)
+    local validTypes = {"Slide", "Fade", "Scale", "None"}
+    if table.find(validTypes, transitionType) then
+        Library.TabTransitionType = transitionType
+        return true
+    end
+    return false
+end
+
+function Library:GetTabTransitions()
+    return {"Slide", "Fade", "Scale", "None"}
+end
+
+-- 📏 Contrôle du scaling UI
+function Library:SetUIScale(scale)
+    Library.UIScale = math.clamp(scale or 1.0, 0.5, 2.0)
+end
+
+function Library:SetTextScale(scale)
+    Library.TextScale = math.clamp(scale or 1.0, 0.7, 1.5)
+end
+
+function Library:ToggleBlockCollapse(enabled)
+    Library.BlocksCollapsible = enabled ~= false
+end
+
+function Library:GetScaleSettings()
+    return {
+        UIScale = Library.UIScale,
+        TextScale = Library.TextScale,
+        BlocksCollapsible = Library.BlocksCollapsible
+    }
+end
+
+-- 🔄 Fonction pour créer un panneau de settings avancés
+function Library:CreateAdvancedSettings()
+    if not Library.SettingsWindow then
+        Library.SettingsWindow = Library:CreateWindow({
+            Title = "🎛️ Enhanced UI Settings",
+            Size = UDim2.new(0, 420, 0, 500),
+            Position = UDim2.new(0.5, -210, 0.5, -250),
+            Transparency = 0.1
+        })
+        
+        local MainTab = Library.SettingsWindow:CreateTab("🎛️ Settings", true, "rbxassetid://7733919326")
+        
+        -- Section Sons & Audio
+        local AudioSection = MainTab:CreateSection("🔊 Audio Controls")
+        
+        AudioSection:CreateToggle({
+            Name = "Enable Sounds",
+            Flag = "UILib_SoundsEnabled",
+            Default = Library.SoundsEnabled,
+            Callback = function(v)
+                Library:ToggleSounds(v)
+            end
+        })
+        
+        AudioSection:CreateSlider({
+            Name = "Master Volume",
+            Flag = "UILib_MasterVolume", 
+            Min = 0,
+            Max = 100,
+            Default = Library.MasterVolume * 100,
+            Rounding = 0,
+            Callback = function(v)
+                Library:SetMasterVolume(v / 100)
+            end
+        })
+        
+        AudioSection:CreateDropdown({
+            Name = "Sound Pack",
+            Flag = "UILib_SoundPack",
+            Items = Library:GetSoundPacks(),
+            Default = Library.CurrentSoundPack,
+            Callback = function(v)
+                Library:SetSoundPack(v)
+            end
+        })
+        
+        -- Section Animations
+        local AnimSection = MainTab:CreateSection("🎬 Animation Controls")
+        
+        AnimSection:CreateSlider({
+            Name = "Animation Speed",
+            Flag = "UILib_AnimSpeed",
+            Min = 5,
+            Max = 200,
+            Default = Library.AnimationSpeed * 100,
+            Rounding = 0,
+            Callback = function(v)
+                Library:SetAnimationSpeed(v / 100)
+            end
+        })
+        
+        AnimSection:CreateDropdown({
+            Name = "Easing Style", 
+            Flag = "UILib_EasingStyle",
+            Items = {"Quad", "Quart", "Quint", "Sine", "Back", "Bounce", "Elastic", "Exponential", "Circular"},
+            Default = "Quart",
+            Callback = function(v)
+                local styles = {
+                    Quad = Enum.EasingStyle.Quad,
+                    Quart = Enum.EasingStyle.Quart,
+                    Quint = Enum.EasingStyle.Quint,
+                    Sine = Enum.EasingStyle.Sine,
+                    Back = Enum.EasingStyle.Back,
+                    Bounce = Enum.EasingStyle.Bounce,
+                    Elastic = Enum.EasingStyle.Elastic,
+                    Exponential = Enum.EasingStyle.Exponential,
+                    Circular = Enum.EasingStyle.Circular
+                }
+                Library:SetEasingStyle(styles[v])
+            end
+        })
+        
+        -- Section Effets Visuels
+        local EffectsSection = MainTab:CreateSection("✨ Visual Effects")
+        
+        EffectsSection:CreateToggle({
+            Name = "Enable Particles",
+            Flag = "UILib_ParticlesEnabled",
+            Default = Library.ParticlesEnabled,
+            Callback = function(v)
+                Library:ToggleParticles(v)
+            end
+        })
+        
+        EffectsSection:CreateSlider({
+            Name = "Effects Intensity",
+            Flag = "UILib_EffectsIntensity",
+            Min = 0,
+            Max = 100,
+            Default = Library.EffectsIntensity * 100,
+            Rounding = 0,
+            Callback = function(v)
+                Library:SetEffectsIntensity(v / 100)
+            end
+        })
+        
+        EffectsSection:CreateDropdown({
+            Name = "Tab Transition Style",
+            Flag = "UILib_TabTransition",
+            Items = Library:GetTabTransitions(),
+            Default = Library.TabTransitionType or "Slide",
+            Callback = function(v)
+                Library:SetTabTransition(v)
+            end
+        })
+        
+        -- Section UI Scaling
+        local ScalingSection = MainTab:CreateSection("📏 UI Scaling")
+        
+        ScalingSection:CreateSlider({
+            Name = "UI Scale",
+            Flag = "UILib_UIScale",
+            Min = 50,
+            Max = 200,
+            Default = Library.UIScale * 100,
+            Rounding = 0,
+            Callback = function(v)
+                Library:SetUIScale(v / 100)
+            end
+        })
+        
+        ScalingSection:CreateSlider({
+            Name = "Text Scale", 
+            Flag = "UILib_TextScale",
+            Min = 70,
+            Max = 150,
+            Default = Library.TextScale * 100,
+            Rounding = 0,
+            Callback = function(v)
+                Library:SetTextScale(v / 100)
+            end
+        })
+        
+        ScalingSection:CreateToggle({
+            Name = "Collapsible Blocks",
+            Flag = "UILib_BlocksCollapsible",
+            Default = Library.BlocksCollapsible,
+            Callback = function(v)
+                Library:ToggleBlockCollapse(v)
+            end
+        })
+        
+        -- Test Section
+        local TestSection = MainTab:CreateSection("🧪 Test Zone")
+        
+        TestSection:CreateButton({
+            Name = "Test All Sounds",
+            Callback = function()
+                task.spawn(function()
+                    for soundName, _ in pairs(SoundPacks[Library.CurrentSoundPack]) do
+                        PlaySound(soundName)
+                        task.wait(0.3)
+                    end
+                end)
+            end
+        })
+        
+        TestSection:CreateButton({
+            Name = "Test Particle Effects",
+            Callback = function()
+                -- Trouve un élément UI pour tester
+                local testFrame = MainTab.TabFrame
+                if testFrame then
+                    CreateParticleEffect(testFrame, "Hover")
+                    task.wait(0.5)
+                    CreateParticleEffect(testFrame, "Click")
+                end
+            end
+        })
+    end
+    
+    return Library.SettingsWindow
+end
