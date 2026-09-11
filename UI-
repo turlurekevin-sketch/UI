@@ -90,10 +90,14 @@ Library.EasingDirection = Enum.EasingDirection.Out
 Library.ParticlesEnabled = true
 Library.EffectsIntensity = 0.5  -- Intensité des effets (0 à 1)
 
--- 📏 SYSTÈME DE SCALING UI
-Library.UIScale = 1.0  -- Échelle globale de l'UI (0.5 à 2.0)
-Library.TextScale = 1.0  -- Échelle du texte (0.7 à 1.5)
+-- 📏 SYSTÈME DE SCALING UI (TEMPORAIREMENT DÉSACTIVÉ POUR CORRIGER L'AFFICHAGE)
+Library.UIScale = 1.0  -- FORCÉ À 1.0 - NE PAS MODIFIER
+Library.TextScale = 1.0  -- FORCÉ À 1.0 - NE PAS MODIFIER
 Library.BlocksCollapsible = true  -- Blocs repliables
+
+-- NOTE: Le scaling est désactivé car il causait des problèmes d'affichage
+-- Les éléments n'apparaissaient plus dans les tabs
+-- Toutes les multiplications par Library.UIScale/TextScale sont désactivées
 
 local function PlaySound(soundName)
     if not Library.SoundsEnabled then return end
@@ -2444,24 +2448,24 @@ function Library:CreateWindow(Settings)
                 ElementOrder = ElementOrder + 1
                 local Lab = Create("TextLabel", {
                     Parent = TargetParent,
-                    Size = UDim2.new(1, 0, 0, 20 * Library.UIScale),
+                    Size = UDim2.new(1, 0, 0, 20),
                     BackgroundTransparency = 1,
                     Text = Text,
                     Font = Library.GlobalFontBold,
                     TextColor3 = SelectedTheme.Text,
-                    TextSize = 13 * Library.TextScale,
+                    TextSize = 13,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     LayoutOrder = ElementOrder,
                     ZIndex = 8,
                     ThemeTag = "Text"
                 })
-                Create("UIPadding", { Parent = Lab, PaddingLeft = UDim.new(0, 6 * Library.UIScale) })
+                Create("UIPadding", { Parent = Lab, PaddingLeft = UDim.new(0, 6) })
             end
 
             function Elements:CreateLabel(Cfg)
                 ElementOrder = ElementOrder + 1
                 local Text = Cfg.Text or Cfg.Name or "Label"
-                local TextSize = (Cfg.TextSize or 13) * Library.TextScale
+                local TextSize = (Cfg.TextSize or 13)
                 local TextColor = Cfg.TextColor or SelectedTheme.TextDark
                 local Centered = Cfg.Centered or false
                 
@@ -2483,10 +2487,10 @@ function Library:CreateWindow(Settings)
                 
                 Create("UIPadding", { 
                     Parent = Lab, 
-                    PaddingLeft = UDim.new(0, (Centered and 10 or 10) * Library.UIScale),
-                    PaddingRight = UDim.new(0, 10 * Library.UIScale),
-                    PaddingTop = UDim.new(0, 4 * Library.UIScale),
-                    PaddingBottom = UDim.new(0, 4 * Library.UIScale)
+                    PaddingLeft = UDim.new(0, 10),
+                    PaddingRight = UDim.new(0, 10),
+                    PaddingTop = UDim.new(0, 4),
+                    PaddingBottom = UDim.new(0, 4)
                 })
                 
                 -- Permet de mettre à jour le texte dynamiquement
@@ -3538,17 +3542,17 @@ function Library:CreateWindow(Settings)
                     ZIndex = 5,
                     ThemeTag = "Second"
                 })
-                AddCorner(BlockFrame, 8 * Library.UIScale)
+                AddCorner(BlockFrame, 8)
 
-                local BlockStroke = Create("UIStroke", { Parent = BlockFrame, Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1 * Library.UIScale })
+                local BlockStroke = Create("UIStroke", { Parent = BlockFrame, Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1 })
                 local BlockGrad = Create("UIGradient", { Parent = BlockStroke, Color = SelectedTheme.Gradient })
                 table.insert(Library.GradientObjects, BlockGrad)
                 
                 -- ➖ Ligne de séparation avec scaling
                 Create("Frame", {
                     Parent = BlockFrame,
-                    Size = UDim2.new(1, -24 * Library.UIScale, 0, 1 * Library.UIScale),
-                    Position = UDim2.new(0, 12 * Library.UIScale, 0, 36 * Library.UIScale),
+                    Size = UDim2.new(1, -24 , 0, 1 ),
+                    Position = UDim2.new(0, 12 , 0, 36 ),
                     BackgroundColor3 = SelectedTheme.TextDark,
                     BackgroundTransparency = 0.8,
                     BorderSizePixel = 0,
@@ -3557,20 +3561,20 @@ function Library:CreateWindow(Settings)
                 })
                 
                 local HasIcon = (BlockCfg.ImageID ~= nil and BlockCfg.ImageID ~= "")
-                local TitleOffsetX = 12 * Library.UIScale
+                local TitleOffsetX = 12 
                 
                 -- 🖼️ Icône du bloc (si présente)
                 if HasIcon then
                     local BlockIcon = Create("ImageLabel", {
                         Parent = BlockFrame,
-                        Size = UDim2.new(0, 18 * Library.UIScale, 0, 18 * Library.UIScale),
-                        Position = UDim2.new(0, 12 * Library.UIScale, 0, 9 * Library.UIScale),
+                        Size = UDim2.new(0, 18 , 0, 18 ),
+                        Position = UDim2.new(0, 12 , 0, 9 ),
                         BackgroundTransparency = 1,
                         ImageColor3 = SelectedTheme.TextDark,
                         ZIndex = 6
                     })
                     SetImageAsync(BlockIcon, "Image", BlockCfg.ImageID)
-                    TitleOffsetX = 36 * Library.UIScale
+                    TitleOffsetX = 36 
                     table.insert(Library.ThemeObjects.TextDark, BlockIcon)
                 end
                 
@@ -3581,19 +3585,19 @@ function Library:CreateWindow(Settings)
                 if Library.BlocksCollapsible then
                     CollapseBtn = Create("TextButton", {
                         Parent = BlockFrame,
-                        Size = UDim2.new(0, 24 * Library.UIScale, 0, 24 * Library.UIScale),
-                        Position = UDim2.new(1, -30 * Library.UIScale, 0, 6 * Library.UIScale),
+                        Size = UDim2.new(0, 24 , 0, 24 ),
+                        Position = UDim2.new(1, -30 , 0, 6 ),
                         BackgroundColor3 = SelectedTheme.Main,
                         BackgroundTransparency = 0.8,
                         Text = "▼",
                         Font = Enum.Font.GothamBold,
                         TextColor3 = SelectedTheme.TextDark,
-                        TextSize = 10 * Library.TextScale,
+                        TextSize = 10 ,
                         ZIndex = 7,
                         AutoButtonColor = false,
                         ThemeTag = "Main"
                     })
-                    AddCorner(CollapseBtn, 4 * Library.UIScale)
+                    AddCorner(CollapseBtn, 4 )
                     
                     -- Effet hover sur le bouton collapse
                     local collapseHoverTween, collapseLeaveTween
@@ -3618,13 +3622,13 @@ function Library:CreateWindow(Settings)
                 -- 📝 Titre du bloc avec scaling
                 local BlockTitle = Create("TextLabel", {
                     Parent = BlockFrame,
-                    Size = UDim2.new(1, -TitleOffsetX - (Library.BlocksCollapsible and 42 or 12) * Library.UIScale, 0, 36 * Library.UIScale),
+                    Size = UDim2.new(1, -TitleOffsetX - 42 , 0, 36 ),
                     Position = UDim2.new(0, TitleOffsetX, 0, 0),
                     BackgroundTransparency = 1,
                     Text = BlockName,
                     Font = Library.GlobalFontBold,
                     TextColor3 = SelectedTheme.Text,
-                    TextSize = 14 * Library.TextScale,
+                    TextSize = 14 ,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     ZIndex = 6,
                     ThemeTag = "Text"
@@ -3634,20 +3638,20 @@ function Library:CreateWindow(Settings)
                 local BlockContent = Create("Frame", {
                     Parent = BlockFrame,
                     Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 0, 42 * Library.UIScale),
+                    Position = UDim2.new(0, 0, 0, 42 ),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
                     ZIndex = 5,
                     Visible = true
                 })
                 
-                Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6 * Library.UIScale) })
+                Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6 ) })
                 Create("UIPadding", { 
                     Parent = BlockContent, 
-                    PaddingTop = UDim.new(0, 2 * Library.UIScale), 
-                    PaddingBottom = UDim.new(0, 10 * Library.UIScale), 
-                    PaddingLeft = UDim.new(0, 8 * Library.UIScale), 
-                    PaddingRight = UDim.new(0, 8 * Library.UIScale) 
+                    PaddingTop = UDim.new(0, 2 ), 
+                    PaddingBottom = UDim.new(0, 10 ), 
+                    PaddingLeft = UDim.new(0, 8 ), 
+                    PaddingRight = UDim.new(0, 8 ) 
                 })
                 
                 -- 🔽 LOGIQUE DE COLLAPSE
