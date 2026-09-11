@@ -2422,18 +2422,10 @@ function Library:CreateWindow(Settings)
                     Library.Flags[Flag] = false
                 end
 
-                -- Événement de clic plus robuste
+                -- Événement de clic (un seul événement)
                 Btn.MouseButton1Click:Connect(function()
                     print("[UI DEBUG] Toggle cliqué:", Cfg.Name or "Toggle", "- État:", not State)
                     UpdateState(not State)
-                end)
-                
-                -- Alternative avec InputBegan en cas de problème
-                Btn.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        print("[UI DEBUG] Toggle InputBegan:", Cfg.Name or "Toggle")
-                        UpdateState(not State)
-                    end
                 end)
                 
                 Library.Items[Flag] = {
