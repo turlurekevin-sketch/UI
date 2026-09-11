@@ -2359,6 +2359,7 @@ function Library:CreateWindow(Settings)
                     ThemeTag = "Text"
                 })
                 
+                -- SUPPRIMÉ CreateRipple qui causait le conflit !
                 DefaultHover(Btn)
                 
                 local Box = Create("Frame", {
@@ -2395,7 +2396,7 @@ function Library:CreateWindow(Settings)
                     State = val
                     Library.Flags[Flag] = val
                     
-                    -- 🔊 Son de toggle sécurisé
+                    -- 🔊 Son de toggle sécurisé (joué ici au lieu de CreateRipple)
                     pcall(function() PlaySound("Toggle") end)
                     
                     TS:Create(BoxStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
@@ -2422,7 +2423,7 @@ function Library:CreateWindow(Settings)
                     Library.Flags[Flag] = false
                 end
 
-                -- Événement de clic (un seul événement)
+                -- UN SEUL ÉVÉNEMENT DE CLIC !
                 Btn.MouseButton1Click:Connect(function()
                     print("[UI DEBUG] Toggle cliqué:", Cfg.Name or "Toggle", "- État:", not State)
                     UpdateState(not State)
