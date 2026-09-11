@@ -2198,7 +2198,7 @@ function Library:CreateWindow(Settings)
             local function DefaultHover(btn)
                 local hoverTween, leaveTween
                 btn.MouseEnter:Connect(function()
-                    pcall(function() PlaySound("Hover") end) -- 🔊 Son hover sécurisé
+                    PlaySound("Hover") -- 🔊 Son hover sur boutons/toggles/sliders
                     if leaveTween then leaveTween:Cancel() end
                     hoverTween = TS:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3})
                     hoverTween:Play()
@@ -2279,7 +2279,7 @@ function Library:CreateWindow(Settings)
                     BackgroundTransparency = 0.5,
                     Text = "",
                     AutoButtonColor = false,
-                    ZIndex = 15,  -- Augmenté pour être au-dessus
+                    ZIndex = 7,
                     LayoutOrder = ElementOrder,
                     ThemeTag = "Second"
                 })
@@ -2296,7 +2296,7 @@ function Library:CreateWindow(Settings)
                     TextColor3 = SelectedTheme.Text,
                     TextSize = 14,
                     TextXAlignment = Enum.TextXAlignment.Center,
-                    ZIndex = 16,  -- Augmenté
+                    ZIndex = 8,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     ThemeTag = "Text"
                 })
@@ -2304,26 +2304,14 @@ function Library:CreateWindow(Settings)
                 CreateRipple(Btn, SelectedTheme.Accent)
                 DefaultHover(Btn)
                 
-                -- Événement de clic plus robuste
                 Btn.MouseButton1Click:Connect(function()
-                    -- Animation + son
-                    pcall(function() PlaySound("Click") end)  -- Sécurisé
-                    
-                    local clickTween = TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -4, 0, 30), Position = UDim2.new(0, 2, 0, 2)})
-                    clickTween:Play()
-                    
-                    clickTween.Completed:Connect(function()
-                        TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 0)}):Play()
-                    end)
-                    
-                    -- Callback sécurisé
+                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -4, 0, 30), Position = UDim2.new(0, 2, 0, 2)}):Play()
+                    task.wait(0.1)
+                    TS:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 0)}):Play()
                     if Cfg.Callback then
-                        pcall(Cfg.Callback)
+                        Cfg.Callback()
                     end
                 end)
-                
-                -- Debug - vérifie si le bouton fonctionne
-                print("[UI DEBUG] Bouton créé:", Cfg.Name or "Button", "- ZIndex:", Btn.ZIndex)
             end
 
             function Elements:CreateToggle(Cfg)
@@ -2337,7 +2325,7 @@ function Library:CreateWindow(Settings)
                     BackgroundTransparency = 0.5,
                     Text = "",
                     AutoButtonColor = false,
-                    ZIndex = 15,  -- Augmenté
+                    ZIndex = 7,
                     LayoutOrder = ElementOrder,
                     ThemeTag = "Second"
                 })
@@ -2354,12 +2342,11 @@ function Library:CreateWindow(Settings)
                     TextColor3 = SelectedTheme.Text,
                     TextSize = 14,
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    ZIndex = 16,  -- Augmenté
+                    ZIndex = 8,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     ThemeTag = "Text"
                 })
                 
-                -- SUPPRIMÉ CreateRipple qui causait le conflit !
                 DefaultHover(Btn)
                 
                 local Box = Create("Frame", {
@@ -2368,7 +2355,7 @@ function Library:CreateWindow(Settings)
                     Position = UDim2.new(1, -32, 0.5, -10),
                     BackgroundColor3 = Color3.new(0, 0, 0),
                     BackgroundTransparency = 1,
-                    ZIndex = 16  -- Augmenté
+                    ZIndex = 8
                 })
                 AddCorner(Box, 4)
                 
@@ -2386,7 +2373,7 @@ function Library:CreateWindow(Settings)
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     BackgroundColor3 = SelectedTheme.TextDark,
                     BackgroundTransparency = 1,
-                    ZIndex = 17  -- Augmenté
+                    ZIndex = 9
                 })
                 AddCorner(InnerSquare, 2)
 
@@ -2396,8 +2383,8 @@ function Library:CreateWindow(Settings)
                     State = val
                     Library.Flags[Flag] = val
                     
-                    -- 🔊 Son de toggle sécurisé (joué ici au lieu de CreateRipple)
-                    pcall(function() PlaySound("Toggle") end)
+                    -- 🔊 Son de toggle
+                    PlaySound("Toggle")
                     
                     TS:Create(BoxStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                         Color = State and SelectedTheme.ElementAccent or SelectedTheme.TextDark,
@@ -2411,9 +2398,8 @@ function Library:CreateWindow(Settings)
                         BackgroundTransparency = State and 0 or 1
                     }):Play()
                     
-                    -- Callback sécurisé
                     if Cfg.Callback then
-                        pcall(function() Cfg.Callback(State) end)
+                        Cfg.Callback(State)
                     end
                 end
                 
@@ -2423,9 +2409,7 @@ function Library:CreateWindow(Settings)
                     Library.Flags[Flag] = false
                 end
 
-                -- UN SEUL ÉVÉNEMENT DE CLIC !
                 Btn.MouseButton1Click:Connect(function()
-                    print("[UI DEBUG] Toggle cliqué:", Cfg.Name or "Toggle", "- État:", not State)
                     UpdateState(not State)
                 end)
                 
@@ -2436,8 +2420,6 @@ function Library:CreateWindow(Settings)
                         UpdateState(val)
                     end
                 }
-                
-                print("[UI DEBUG] Toggle créé:", Cfg.Name or "Toggle", "- ZIndex:", Btn.ZIndex)
             end
 
             function Elements:CreateSlider(Cfg)
