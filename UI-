@@ -1769,7 +1769,43 @@ function Library:CreateWindow(Settings)
         PaddingRight = UDim.new(0, 6)
     })
     
-    -- GUI Settings button removed by user request
+    local OpenSettingsBtn = Create("TextButton", {
+        Parent = Main,
+        Size = UDim2.new(0, 165, 0, 40),
+        Position = UDim2.new(0, 15, 1, -103),
+        BackgroundColor3 = SelectedTheme.Second,
+        BackgroundTransparency = 0.5,
+        Text = "GUI Settings",
+        Font = Library.GlobalFontBold,
+        TextColor3 = SelectedTheme.Text,
+        TextSize = 13,
+        ZIndex = 6,
+        ThemeTag = "Second"
+    })
+    AddCorner(OpenSettingsBtn, 8)
+    table.insert(Library.ThemeObjects.Text, OpenSettingsBtn)
+
+    CreateRipple(OpenSettingsBtn, SelectedTheme.Accent)
+    AddStroke(OpenSettingsBtn, SelectedTheme).Transparency = 0.8
+    
+    local hoverTweenSettings, leaveTweenSettings
+    OpenSettingsBtn.MouseEnter:Connect(function()
+        PlaySound("Hover") -- 🔊 Son hover sur bouton settings
+        if leaveTweenSettings then leaveTweenSettings:Cancel() end
+        hoverTweenSettings = TS:Create(OpenSettingsBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2})
+        hoverTweenSettings:Play()
+    end)
+    OpenSettingsBtn.MouseLeave:Connect(function()
+        if hoverTweenSettings then hoverTweenSettings:Cancel() end
+        leaveTweenSettings = TS:Create(OpenSettingsBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.5})
+        leaveTweenSettings:Play()
+    end)
+    OpenSettingsBtn.MouseButton1Down:Connect(function()
+        TS:Create(OpenSettingsBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 161, 0, 36), Position = UDim2.new(0, 17, 1, -101)}):Play()
+    end)
+    OpenSettingsBtn.MouseButton1Up:Connect(function()
+        TS:Create(OpenSettingsBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 165, 0, 40), Position = UDim2.new(0, 15, 1, -103)}):Play()
+    end)
 
     local ProfileFrame = Create("Frame", {
         Parent = Main,
@@ -3270,7 +3306,7 @@ function Library:CreateWindow(Settings)
                 
                 Create("TextLabel", {
                     Parent = BlockFrame,
-                    Size = UDim2.new(1, -TitleOffsetX - 12, 0, 36),
+                    Size = UDim2.new(1, -TitleOffsetX - 40, 0, 36),  -- Réduit pour laisser place à la flèche
                     Position = UDim2.new(0, TitleOffsetX, 0, 0),
                     BackgroundTransparency = 1,
                     Text = BlockName,
@@ -3282,17 +3318,80 @@ function Library:CreateWindow(Settings)
                     ThemeTag = "Text"
                 })
                 
+                -- 🎯 BOUTON COLLAPSE/EXPAND (flèche en haut à droite)
+                local isCollapsed = false
+                
+                local CollapseButton = Create("TextButton", {
+                    Parent = BlockFrame,
+                    Size = UDim2.new(0, 32, 0, 32),
+                    Position = UDim2.new(1, -36, 0, 2),
+                    BackgroundColor3 = SelectedTheme.Main,
+                    BackgroundTransparency = 0.7,
+                    Text = "",
+                    AutoButtonColor = false,
+                    ZIndex = 7,
+                    ThemeTag = "Main"
+                })
+                AddCorner(CollapseButton, 6)
+                
+                local CollapseArrow = Create("TextLabel", {
+                    Parent = CollapseButton,
+                    Size = UDim2.fromScale(1, 1),
+                    BackgroundTransparency = 1,
+                    Text = "▼",  -- Flèche vers le bas (ouvert)
+                    Font = Enum.Font.GothamBold,
+                    TextColor3 = SelectedTheme.Accent,
+                    TextSize = 14,
+                    ZIndex = 8,
+                    ThemeTag = "Accent"
+                })
+                
+                -- Effet hover sur le bouton collapse
+                CollapseButton.MouseEnter:Connect(function()
+                    PlaySound("Hover")
+                    Tween(CollapseButton, 0.2, { BackgroundTransparency = 0.3 })
+                    Tween(CollapseArrow, 0.2, { TextSize = 16 })
+                end)
+                
+                CollapseButton.MouseLeave:Connect(function()
+                    Tween(CollapseButton, 0.2, { BackgroundTransparency = 0.7 })
+                    Tween(CollapseArrow, 0.2, { TextSize = 14 })
+                end)
+                
                 local BlockContent = Create("Frame", {
                     Parent = BlockFrame,
                     Size = UDim2.new(1, 0, 0, 0),
                     Position = UDim2.new(0, 0, 0, 42),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
-                    ZIndex = 5
+                    ZIndex = 5,
+                    Visible = true  -- Visible par défaut
                 })
                 
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
+                
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND
+                CollapseButton.MouseButton1Click:Connect(function()
+                    PlaySound("Click")
+                    isCollapsed = not isCollapsed
+                    
+                    if isCollapsed then
+                        -- Cache le contenu
+                        BlockContent.Visible = false
+                        CollapseArrow.Text = "▶"  -- Flèche vers la droite (fermé)
+                        
+                        -- Animation de la flèche
+                        Tween(CollapseArrow, 0.3, { Rotation = 90 })
+                    else
+                        -- Affiche le contenu
+                        BlockContent.Visible = true
+                        CollapseArrow.Text = "▼"  -- Flèche vers le bas (ouvert)
+                        
+                        -- Animation de la flèche
+                        Tween(CollapseArrow, 0.3, { Rotation = 0 })
+                    end
+                end)
                 
                 return GetElements(BlockContent)
             end
@@ -3301,9 +3400,8 @@ function Library:CreateWindow(Settings)
         return TabElements, Activate
     end
 
-    -- local SettingsTab, OpenSettingsFunc = Funcs:CreateTab("Settings", true) -- Removed by user request 
-    -- Settings tab hidden (removed by user request)
-    --[[
+    local SettingsTab, OpenSettingsFunc = Funcs:CreateTab("Settings", true) 
+    
     for _, v in pairs(TabContainer:GetChildren()) do 
         if v:IsA("TextButton") then
             local lbl = v:FindFirstChild("TabLabel")
@@ -3314,7 +3412,11 @@ function Library:CreateWindow(Settings)
         end 
     end
 
-    -- GUI Settings button click handler removed
+    OpenSettingsBtn.MouseButton1Click:Connect(function()
+        if OpenSettingsFunc then
+            OpenSettingsFunc()
+        end
+    end)
 
     local AppBlock = SettingsTab:CreateBlock({Name = "Appearance", Side = "Left"})
     
@@ -3643,7 +3745,7 @@ function Library:CreateWindow(Settings)
                 Library:Notify({Title = "Error", Content = "Select a valid theme first"})
             end
         end
-    --]]
+    })
 
     return Funcs
 end
