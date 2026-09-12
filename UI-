@@ -3365,31 +3365,88 @@ function Library:CreateWindow(Settings)
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
                     ZIndex = 5,
-                    Visible = true  -- Visible par défaut
+                    Visible = true,  -- Visible par défaut
+                    ClipsDescendants = false  -- Important pour l'animation
                 })
                 
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND
+                -- Variable pour stocker la taille originale du contenu
+                local originalContentSize = 0
+                
+                -- Attend un frame pour que AutomaticSize calcule la vraie taille
+                task.defer(function()
+                    task.wait()
+                    originalContentSize = BlockContent.AbsoluteSize.Y
+                end)
+                
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND AVEC ANIMATION SMOOTH
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
+                    -- Récupère la taille actuelle avant l'animation
+                    local currentSize = BlockContent.AbsoluteSize.Y
+                    
                     if isCollapsed then
-                        -- Cache le contenu
-                        BlockContent.Visible = false
-                        CollapseArrow.Text = "▶"  -- Flèche vers la droite (fermé)
+                        -- 🔽 FERMETURE SMOOTH
+                        
+                        -- Désactive AutomaticSize pour pouvoir animer
+                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
+                        BlockContent.Size = UDim2.new(1, 0, 0, currentSize)
+                        BlockContent.ClipsDescendants = true
+                        
+                        -- Anime vers taille 0
+                        Tween(BlockContent, 0.3, { 
+                            Size = UDim2.new(1, 0, 0, 0)
+                        })
                         
                         -- Animation de la flèche
-                        Tween(CollapseArrow, 0.3, { Rotation = 90 })
+                        CollapseArrow.Text = "▶"
+                        Tween(CollapseArrow, 0.3, { Rotation = -90 })
+                        
+                        -- Cache complètement après l'animation
+                        task.delay(0.3, function()
+                            if isCollapsed then
+                                BlockContent.Visible = false
+                            end
+                        end)
                     else
-                        -- Affiche le contenu
+                        -- 🔼 OUVERTURE SMOOTH
+                        
+                        -- Montre d'abord le contenu
                         BlockContent.Visible = true
-                        CollapseArrow.Text = "▼"  -- Flèche vers le bas (ouvert)
+                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
+                        BlockContent.Size = UDim2.new(1, 0, 0, 0)
+                        BlockContent.ClipsDescendants = true
+                        
+                        -- Attend un frame pour calculer la taille cible
+                        task.defer(function()
+                            task.wait()
+                            BlockContent.AutomaticSize = Enum.AutomaticSize.Y
+                            task.wait()
+                            local targetSize = BlockContent.AbsoluteSize.Y
+                            BlockContent.AutomaticSize = Enum.AutomaticSize.None
+                            BlockContent.Size = UDim2.new(1, 0, 0, 0)
+                            
+                            -- Anime vers la taille calculée
+                            Tween(BlockContent, 0.4, { 
+                                Size = UDim2.new(1, 0, 0, targetSize)
+                            })
+                            
+                            -- Réactive AutomaticSize après l'animation
+                            task.delay(0.4, function()
+                                if not isCollapsed then
+                                    BlockContent.AutomaticSize = Enum.AutomaticSize.Y
+                                    BlockContent.ClipsDescendants = false
+                                end
+                            end)
+                        end)
                         
                         -- Animation de la flèche
-                        Tween(CollapseArrow, 0.3, { Rotation = 0 })
+                        CollapseArrow.Text = "▼"
+                        Tween(CollapseArrow, 0.4, { Rotation = 0 })
                     end
                 end)
                 
