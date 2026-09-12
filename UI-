@@ -3478,36 +3478,34 @@
                     Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                     Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                     
-                    -- 🎬 LOGIQUE COLLAPSE/EXPAND (méthode dropdown simplifiée)
-                    CollapseButton.MouseButton1Click:Connect(function()
-                        PlaySound("Click")
-                        isCollapsed = not isCollapsed
-                        
-                        -- Hauteur cible (comme dropdown : ternaire simple)
-                        local H = isCollapsed and 42 or (BlockFrame.AutomaticSize == Enum.AutomaticSize.Y and BlockFrame.AbsoluteSize.Y or BlockFrame.Size.Y.Offset)
-                        
-                        -- Désactive AutomaticSize
-                        BlockFrame.AutomaticSize = Enum.AutomaticSize.None
-                        
-                        -- Animation du BlockFrame (comme dropdown)
-                        local blockTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, H)})
-                        blockTween:Play()
-                        
-                        -- Animation de la flèche (comme dropdown)
-                        TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = isCollapsed and 90 or 0}):Play()
-                        
-                        -- Change la flèche
-                        if not isCollapsed then
-                            CollapseArrow.Text = "▼"
-                            blockTween.Completed:Connect(function()
-                                BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
-                            end)
-                        else
-                            task.delay(0.4, function()
-                                if isCollapsed then CollapseArrow.Text = "▶" end
-                            end)
-                        end
-                    end)
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND (méthode dropdown simplifiée)
+                CollapseButton.MouseButton1Click:Connect(function()
+                    PlaySound("Click")
+                    isCollapsed = not isCollapsed
+                    
+                    -- Change la flèche IMMÉDIATEMENT (pas de délai)
+                    CollapseArrow.Text = isCollapsed and "▶" or "▼"
+                    
+                    -- Hauteur cible (comme dropdown : ternaire simple)
+                    local H = isCollapsed and 42 or (BlockFrame.AutomaticSize == Enum.AutomaticSize.Y and BlockFrame.AbsoluteSize.Y or BlockFrame.Size.Y.Offset)
+                    
+                    -- Désactive AutomaticSize
+                    BlockFrame.AutomaticSize = Enum.AutomaticSize.None
+                    
+                    -- Animation du BlockFrame (comme dropdown)
+                    local blockTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, H)})
+                    blockTween:Play()
+                    
+                    -- Animation de la flèche (comme dropdown)
+                    TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = isCollapsed and 90 or 0}):Play()
+                    
+                    -- Réactive AutomaticSize après ouverture
+                    if not isCollapsed then
+                        blockTween.Completed:Connect(function()
+                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
+                        end)
+                    end
+                end)end)
                     
                     return GetElements(BlockContent)
                 end
