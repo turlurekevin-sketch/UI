@@ -3372,74 +3372,57 @@ function Library:CreateWindow(Settings)
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND EXACTEMENT COMME DROPDOWN
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLIFIÉE (comme dropdown)
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
+                    -- Calcule la hauteur cible AVANT l'animation
+                    local targetHeight
                     if isCollapsed then
-                        -- FERMETURE : Anime vers hauteur header uniquement (42px)
-                        local targetHeight = 42
-                        
-                        -- Désactive AutomaticSize du BlockFrame
-                        BlockFrame.AutomaticSize = Enum.AutomaticSize.None
-                        
-                        -- Animation du BlockFrame (EXACTEMENT comme dropdown)
-                        TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                            Size = UDim2.new(1, 0, 0, targetHeight)
-                        }):Play()
-                        
-                        -- Animation de la flèche (rotation fluide)
-                        local arrowTween = TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                            Rotation = 90  -- Rotation positive (sens horaire)
-                        })
-                        arrowTween:Play()
-                        
-                        -- Change le texte APRÈS la rotation (effet fluide)
+                        -- Fermé : juste le header
+                        targetHeight = 42
+                    else
+                        -- Ouvert : header + contenu
+                        -- On laisse BlockFrame calculer sa hauteur automatiquement d'abord
+                        if BlockFrame.AutomaticSize == Enum.AutomaticSize.None then
+                            -- Si c'était en mode manuel, réactive pour obtenir la vraie hauteur
+                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
+                            task.wait()
+                        end
+                        targetHeight = BlockFrame.AbsoluteSize.Y
+                    end
+                    
+                    -- Désactive AutomaticSize pour l'animation
+                    BlockFrame.AutomaticSize = Enum.AutomaticSize.None
+                    
+                    -- Animation du BlockFrame (comme dropdown ligne 2850)
+                    TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(1, 0, 0, targetHeight)
+                    }):Play()
+                    
+                    -- Animation de la flèche (comme dropdown ligne 2851)
+                    local arrowRotation = isCollapsed and 90 or 0
+                    local arrowTween = TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                        Rotation = arrowRotation
+                    })
+                    arrowTween:Play()
+                    
+                    -- Change le texte de la flèche après rotation (effet fluide)
+                    if isCollapsed then
                         arrowTween.Completed:Connect(function()
-                            if isCollapsed then  -- Vérifie qu'on est toujours fermé
+                            if isCollapsed then
                                 CollapseArrow.Text = "▶"
                             end
                         end)
-                        
                     else
-                        -- OUVERTURE : Anime vers hauteur complète
-                        
-                        -- Change le texte AVANT la rotation pour l'ouverture
                         CollapseArrow.Text = "▼"
-                        
-                        -- Spawn async pour ne pas bloquer
-                        task.spawn(function()
-                            -- Réactive temporairement AutomaticSize pour calculer la hauteur
-                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
-                            
-                            -- Attend que la taille se recalcule (1 frame)
-                            RS.Heartbeat:Wait()
-                            
-                            local fullHeight = BlockFrame.AbsoluteSize.Y
-                            
-                            -- Remet en mode manuel pour l'animation
-                            BlockFrame.AutomaticSize = Enum.AutomaticSize.None
-                            BlockFrame.Size = UDim2.new(1, 0, 0, 42)
-                            
-                            -- Animation du BlockFrame vers hauteur complète
-                            local openTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                                Size = UDim2.new(1, 0, 0, fullHeight)
-                            })
-                            openTween:Play()
-                            
-                            -- Réactive AutomaticSize après l'animation
-                            openTween.Completed:Connect(function()
-                                if not isCollapsed then
-                                    BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
-                                end
-                            end)
+                        -- Réactive AutomaticSize après l'ouverture pour gérer les futurs changements
+                        arrowTween.Completed:Connect(function()
+                            if not isCollapsed then
+                                BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
+                            end
                         end)
-                        
-                        -- Animation de la flèche (rotation fluide retour à 0)
-                        TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                            Rotation = 0
-                        }):Play()
                     end
                 end)
                 
