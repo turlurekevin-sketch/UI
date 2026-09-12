@@ -3358,83 +3358,62 @@ function Library:CreateWindow(Settings)
                     Tween(CollapseArrow, 0.2, { TextSize = 14 })
                 end)
                 
-                local BlockContent = Create("Frame", {
+                -- Wrapper CanvasGroup pour effet fade smooth
+                local ContentWrapper = Create("CanvasGroup", {
                     Parent = BlockFrame,
                     Size = UDim2.new(1, 0, 0, 0),
                     Position = UDim2.new(0, 0, 0, 42),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
-                    ClipsDescendants = true,  -- Important pour l'animation
-                    ZIndex = 5,
-                    Visible = true  -- Visible par défaut
+                    GroupTransparency = 0,  -- Opaque par défaut
+                    ZIndex = 5
+                })
+                
+                local BlockContent = Create("Frame", {
+                    Parent = ContentWrapper,
+                    Size = UDim2.new(1, 0, 0, 0),
+                    Position = UDim2.new(0, 0, 0, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    ZIndex = 5
                 })
                 
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND FLUIDE (méthode simple et fiable)
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND avec FADE SMOOTH
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
                     if isCollapsed then
-                        -- FERMETURE FLUIDE
-                        CollapseArrow.Text = "▶"  -- Change la flèche immédiatement
+                        -- FERMETURE avec fade out smooth
+                        CollapseArrow.Text = "▶"
                         
-                        -- Stocke la hauteur actuelle
-                        local currentHeight = BlockContent.AbsoluteSize.Y
+                        -- Animation flèche
+                        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        TweenService:Create(CollapseArrow, tweenInfo, { Rotation = -90 }):Play()
                         
-                        -- Désactive AutomaticSize et fixe la taille actuelle
-                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
-                        BlockContent.Size = UDim2.new(1, 0, 0, currentHeight)
+                        -- Fade out du contenu (GroupTransparency)
+                        local fadeTween = TweenService:Create(ContentWrapper, tweenInfo, { GroupTransparency = 1 })
+                        fadeTween:Play()
                         
-                        -- Animation fluide vers 0 (Quart easing pour effet smooth)
-                        local tween = TweenService:Create(BlockContent, TweenInfo.new(
-                            0.4,  -- Durée
-                            Enum.EasingStyle.Quart,  -- Style smooth
-                            Enum.EasingDirection.Out  -- Ralentissement à la fin
-                        ), {
-                            Size = UDim2.new(1, 0, 0, 0)
-                        })
-                        tween:Play()
-                        
-                        -- Animation de la flèche
-                        Tween(CollapseArrow, 0.4, { Rotation = -90 })
+                        -- Cache complètement après le fade
+                        fadeTween.Completed:Connect(function()
+                            ContentWrapper.Visible = false
+                        end)
                         
                     else
-                        -- OUVERTURE FLUIDE
-                        CollapseArrow.Text = "▼"  -- Change la flèche immédiatement
+                        -- OUVERTURE avec fade in smooth
+                        CollapseArrow.Text = "▼"
+                        ContentWrapper.Visible = true
                         
-                        -- Réactive temporairement AutomaticSize pour calculer la hauteur cible
-                        BlockContent.Size = UDim2.new(1, 0, 0, 0)
-                        BlockContent.AutomaticSize = Enum.AutomaticSize.Y
+                        -- Animation flèche
+                        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        TweenService:Create(CollapseArrow, tweenInfo, { Rotation = 0 }):Play()
                         
-                        -- Attend 1 frame pour que la hauteur se calcule
-                        task.wait()
-                        local targetHeight = BlockContent.AbsoluteSize.Y
-                        
-                        -- Remet en mode manuel avec hauteur 0
-                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
-                        BlockContent.Size = UDim2.new(1, 0, 0, 0)
-                        
-                        -- Animation fluide vers la hauteur cible
-                        local tween = TweenService:Create(BlockContent, TweenInfo.new(
-                            0.4,  -- Durée
-                            Enum.EasingStyle.Quart,  -- Style smooth
-                            Enum.EasingDirection.Out  -- Ralentissement à la fin
-                        ), {
-                            Size = UDim2.new(1, 0, 0, targetHeight)
-                        })
-                        tween:Play()
-                        
-                        -- Animation de la flèche
-                        Tween(CollapseArrow, 0.4, { Rotation = 0 })
-                        
-                        -- Après l'animation, réactive AutomaticSize pour gérer les changements futurs
-                        tween.Completed:Connect(function()
-                            BlockContent.AutomaticSize = Enum.AutomaticSize.Y
-                            BlockContent.Size = UDim2.new(1, 0, 0, 0)
-                        end)
+                        -- Fade in du contenu (GroupTransparency)
+                        TweenService:Create(ContentWrapper, tweenInfo, { GroupTransparency = 0 }):Play()
                     end
                 end)
                 
