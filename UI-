@@ -3378,11 +3378,8 @@ function Library:CreateWindow(Settings)
                     isCollapsed = not isCollapsed
                     
                     if isCollapsed then
-                        -- FERMETURE : Anime vers hauteur header uniquement
-                        -- Header = 36px de titre + 6px de séparation = 42px minimum
-                        local targetHeight = 44  -- Un peu plus pour éviter de couper le titre
-                        
-                        CollapseArrow.Text = "▶"
+                        -- FERMETURE : Anime vers hauteur header uniquement (42px)
+                        local targetHeight = 42
                         
                         -- Désactive AutomaticSize du BlockFrame
                         BlockFrame.AutomaticSize = Enum.AutomaticSize.None
@@ -3392,13 +3389,23 @@ function Library:CreateWindow(Settings)
                             Size = UDim2.new(1, 0, 0, targetHeight)
                         }):Play()
                         
-                        -- Animation de la flèche
-                        TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                            Rotation = -90
-                        }):Play()
+                        -- Animation de la flèche (rotation fluide)
+                        local arrowTween = TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                            Rotation = 90  -- Rotation positive (sens horaire)
+                        })
+                        arrowTween:Play()
+                        
+                        -- Change le texte APRÈS la rotation (effet fluide)
+                        arrowTween.Completed:Connect(function()
+                            if isCollapsed then  -- Vérifie qu'on est toujours fermé
+                                CollapseArrow.Text = "▶"
+                            end
+                        end)
                         
                     else
                         -- OUVERTURE : Anime vers hauteur complète
+                        
+                        -- Change le texte AVANT la rotation pour l'ouverture
                         CollapseArrow.Text = "▼"
                         
                         -- Spawn async pour ne pas bloquer
@@ -3413,7 +3420,7 @@ function Library:CreateWindow(Settings)
                             
                             -- Remet en mode manuel pour l'animation
                             BlockFrame.AutomaticSize = Enum.AutomaticSize.None
-                            BlockFrame.Size = UDim2.new(1, 0, 0, 44)  -- Part de 44px (header)
+                            BlockFrame.Size = UDim2.new(1, 0, 0, 42)
                             
                             -- Animation du BlockFrame vers hauteur complète
                             local openTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
@@ -3429,7 +3436,7 @@ function Library:CreateWindow(Settings)
                             end)
                         end)
                         
-                        -- Animation de la flèche (immédiate)
+                        -- Animation de la flèche (rotation fluide retour à 0)
                         TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                             Rotation = 0
                         }):Play()
