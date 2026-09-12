@@ -3372,56 +3372,33 @@ function Library:CreateWindow(Settings)
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLIFIÉE (comme dropdown)
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND (méthode dropdown simplifiée)
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
-                    -- Calcule la hauteur cible AVANT l'animation
-                    local targetHeight
-                    if isCollapsed then
-                        -- Fermé : juste le header
-                        targetHeight = 42
-                    else
-                        -- Ouvert : header + contenu
-                        -- On laisse BlockFrame calculer sa hauteur automatiquement d'abord
-                        if BlockFrame.AutomaticSize == Enum.AutomaticSize.None then
-                            -- Si c'était en mode manuel, réactive pour obtenir la vraie hauteur
-                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
-                            task.wait()
-                        end
-                        targetHeight = BlockFrame.AbsoluteSize.Y
-                    end
+                    -- Hauteur cible (comme dropdown : ternaire simple)
+                    local H = isCollapsed and 42 or (BlockFrame.AutomaticSize == Enum.AutomaticSize.Y and BlockFrame.AbsoluteSize.Y or BlockFrame.Size.Y.Offset)
                     
-                    -- Désactive AutomaticSize pour l'animation
+                    -- Désactive AutomaticSize
                     BlockFrame.AutomaticSize = Enum.AutomaticSize.None
                     
-                    -- Animation du BlockFrame (comme dropdown ligne 2850)
-                    TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                        Size = UDim2.new(1, 0, 0, targetHeight)
-                    }):Play()
+                    -- Animation du BlockFrame (comme dropdown)
+                    local blockTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, H)})
+                    blockTween:Play()
                     
-                    -- Animation de la flèche (comme dropdown ligne 2851)
-                    local arrowRotation = isCollapsed and 90 or 0
-                    local arrowTween = TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                        Rotation = arrowRotation
-                    })
-                    arrowTween:Play()
+                    -- Animation de la flèche (comme dropdown)
+                    TS:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = isCollapsed and 90 or 0}):Play()
                     
-                    -- Change le texte de la flèche après rotation (effet fluide)
-                    if isCollapsed then
-                        arrowTween.Completed:Connect(function()
-                            if isCollapsed then
-                                CollapseArrow.Text = "▶"
-                            end
+                    -- Change la flèche
+                    if not isCollapsed then
+                        CollapseArrow.Text = "▼"
+                        blockTween.Completed:Connect(function()
+                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
                         end)
                     else
-                        CollapseArrow.Text = "▼"
-                        -- Réactive AutomaticSize après l'ouverture pour gérer les futurs changements
-                        arrowTween.Completed:Connect(function()
-                            if not isCollapsed then
-                                BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
-                            end
+                        task.delay(0.4, function()
+                            if isCollapsed then CollapseArrow.Text = "▶" end
                         end)
                     end
                 end)
