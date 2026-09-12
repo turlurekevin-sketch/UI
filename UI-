@@ -1685,7 +1685,7 @@ function Library:CreateWindow(Settings)
 
     Create("TextLabel", {
         Parent = TopBar,
-        Size = UDim2.new(0, 200, 1, 0),  -- Largeur fixe au lieu de relative
+        Size = UDim2.new(1, -40, 1, 0),
         Position = UDim2.new(0, TitleOffsetX, 0, 0),
         BackgroundTransparency = 1,
         Text = Title,
@@ -1696,94 +1696,6 @@ function Library:CreateWindow(Settings)
         ZIndex = 6,
         ThemeTag = "Text"
     })
-    
-    -- 🔍 BARRE DE RECHERCHE GLOBALE (à droite du titre)
-    local SearchBarContainer = Create("Frame", {
-        Parent = TopBar,
-        Size = UDim2.new(0, 180, 0, 28),
-        Position = UDim2.new(0, TitleOffsetX + 220, 0.5, -14),  -- À droite du titre
-        BackgroundColor3 = SelectedTheme.Second,
-        BackgroundTransparency = 0.6,
-        ZIndex = 6,
-        ThemeTag = "Second"
-    })
-    AddCorner(SearchBarContainer, 6)
-    AddStroke(SearchBarContainer, SelectedTheme).Transparency = 0.8
-    
-    local SearchIcon = Create("TextLabel", {
-        Parent = SearchBarContainer,
-        Size = UDim2.new(0, 28, 1, 0),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = 1,
-        Text = "🔍",
-        Font = Enum.Font.GothamBold,
-        TextColor3 = SelectedTheme.TextDark,
-        TextSize = 14,
-        ZIndex = 7,
-        ThemeTag = "TextDark"
-    })
-    
-    local SearchBox = Create("TextBox", {
-        Parent = SearchBarContainer,
-        Size = UDim2.new(1, -32, 1, 0),
-        Position = UDim2.new(0, 28, 0, 0),
-        BackgroundTransparency = 1,
-        Text = "",
-        PlaceholderText = "Rechercher...",
-        PlaceholderColor3 = SelectedTheme.TextDark,
-        Font = Library.GlobalFont,
-        TextColor3 = SelectedTheme.Text,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ClearTextOnFocus = false,
-        ZIndex = 7,
-        ThemeTag = "Text"
-    })
-    
-    -- Liste de tous les éléments recherchables (sera remplie dynamiquement)
-    local SearchableElements = {}
-    
-    -- Fonction pour ajouter un élément à la recherche
-    Library.RegisterSearchable = function(elementData)
-        table.insert(SearchableElements, elementData)
-    end
-    
-    -- Fonction de filtrage
-    local function FilterElements(query)
-        local lowerQuery = query:lower()
-        
-        if query == "" then
-            -- Affiche tout
-            for _, data in ipairs(SearchableElements) do
-                if data.Element and data.Element.Parent then
-                    data.Element.Visible = true
-                end
-            end
-        else
-            -- Filtre selon la recherche
-            for _, data in ipairs(SearchableElements) do
-                if data.Element and data.Element.Parent then
-                    local name = (data.Name or ""):lower()
-                    local matches = name:find(lowerQuery, 1, true) ~= nil
-                    data.Element.Visible = matches
-                end
-            end
-        end
-    end
-    
-    -- Écoute les changements dans la barre de recherche
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        FilterElements(SearchBox.Text)
-    end)
-    
-    -- Effet focus sur la barre de recherche
-    SearchBox.Focused:Connect(function()
-        TS:Create(SearchBarContainer, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
-    end)
-    
-    SearchBox.FocusLost:Connect(function()
-        TS:Create(SearchBarContainer, TweenInfo.new(0.2), {BackgroundTransparency = 0.6}):Play()
-    end)
     
     local Close = Create("TextButton", {
         Parent = TopBar,
@@ -2501,15 +2413,6 @@ function Library:CreateWindow(Settings)
                     UpdateState(not State)
                 end)
                 
-                -- 🔍 Enregistre dans la recherche globale
-                if Library.RegisterSearchable then
-                    Library.RegisterSearchable({
-                        Name = Cfg.Name or "Toggle",
-                        Element = Btn,
-                        Type = "Toggle"
-                    })
-                end
-                
                 Library.Items[Flag] = {
                     Set = function(val)
                         if val == nil then return end
@@ -2677,15 +2580,6 @@ function Library:CreateWindow(Settings)
                 end)
 
                 Library.Items[Flag] = {Set = Update}
-                
-                -- 🔍 Enregistre dans la recherche globale
-                if Library.RegisterSearchable then
-                    Library.RegisterSearchable({
-                        Name = Cfg.Name or "Slider",
-                        Element = Frame,
-                        Type = "Slider"
-                    })
-                end
             end
 
             function Elements:CreateInput(Cfg)
