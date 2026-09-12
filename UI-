@@ -3371,73 +3371,23 @@ function Library:CreateWindow(Settings)
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLE ET FIABLE
-                local isAnimating = false
-                
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLE AVEC DÉLAI SMOOTH
                 CollapseButton.MouseButton1Click:Connect(function()
-                    if isAnimating then return end  -- Empêche les clics pendant l'animation
-                    
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
-                    isAnimating = true
                     
                     if isCollapsed then
-                        -- 🔽 FERMETURE SMOOTH avec Transparency
+                        -- Fermeture avec petit délai smooth
                         CollapseArrow.Text = "▶"
-                        Tween(CollapseArrow, 0.3, { Rotation = -90 })
+                        Tween(CollapseArrow, 0.2, { Rotation = -90 })
                         
-                        -- Fade out du contenu
-                        for _, child in ipairs(BlockContent:GetDescendants()) do
-                            if child:IsA("GuiObject") and child ~= BlockContent then
-                                Tween(child, 0.25, { 
-                                    BackgroundTransparency = 1,
-                                    TextTransparency = 1
-                                })
-                            end
-                            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
-                                Tween(child, 0.25, { ImageTransparency = 1 })
-                            end
-                            if child:IsA("UIStroke") then
-                                Tween(child, 0.25, { Transparency = 1 })
-                            end
-                        end
-                        
-                        -- Cache après le fade
-                        task.delay(0.25, function()
-                            BlockContent.Visible = false
-                            isAnimating = false
-                        end)
+                        task.wait(0.15)  -- Petit délai pour voir l'animation de la flèche
+                        BlockContent.Visible = false
                     else
-                        -- 🔼 OUVERTURE SMOOTH avec Transparency
-                        BlockContent.Visible = true
+                        -- Ouverture immédiate
                         CollapseArrow.Text = "▼"
-                        Tween(CollapseArrow, 0.3, { Rotation = 0 })
-                        
-                        -- Remet les transparences d'origine en fade in
-                        task.wait(0.05)  -- Petit délai pour que le contenu soit visible
-                        
-                        for _, child in ipairs(BlockContent:GetDescendants()) do
-                            if child:IsA("GuiObject") and child ~= BlockContent then
-                                local originalTrans = child:GetAttribute("OriginalTransparency") or 0
-                                if child:IsA("Frame") then
-                                    originalTrans = 0.5
-                                end
-                                Tween(child, 0.3, { 
-                                    BackgroundTransparency = originalTrans,
-                                    TextTransparency = 0
-                                })
-                            end
-                            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
-                                Tween(child, 0.3, { ImageTransparency = 0 })
-                            end
-                            if child:IsA("UIStroke") then
-                                Tween(child, 0.3, { Transparency = 0.7 })
-                            end
-                        end
-                        
-                        task.delay(0.3, function()
-                            isAnimating = false
-                        end)
+                        Tween(CollapseArrow, 0.2, { Rotation = 0 })
+                        BlockContent.Visible = true
                     end
                 end)
                 
