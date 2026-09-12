@@ -3371,23 +3371,25 @@ function Library:CreateWindow(Settings)
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLE AVEC DÉLAI SMOOTH
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
                     if isCollapsed then
-                        -- Fermeture avec petit délai smooth
-                        CollapseArrow.Text = "▶"
-                        Tween(CollapseArrow, 0.2, { Rotation = -90 })
-                        
-                        task.wait(0.15)  -- Petit délai pour voir l'animation de la flèche
+                        -- Cache le contenu
                         BlockContent.Visible = false
+                        CollapseArrow.Text = "▶"  -- Flèche vers la droite (fermé)
+                        
+                        -- Animation de la flèche
+                        Tween(CollapseArrow, 0.3, { Rotation = 90 })
                     else
-                        -- Ouverture immédiate
-                        CollapseArrow.Text = "▼"
-                        Tween(CollapseArrow, 0.2, { Rotation = 0 })
+                        -- Affiche le contenu
                         BlockContent.Visible = true
+                        CollapseArrow.Text = "▼"  -- Flèche vers le bas (ouvert)
+                        
+                        -- Animation de la flèche
+                        Tween(CollapseArrow, 0.3, { Rotation = 0 })
                     end
                 end)
                 
