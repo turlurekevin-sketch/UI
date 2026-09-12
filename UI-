@@ -3378,8 +3378,9 @@ function Library:CreateWindow(Settings)
                     isCollapsed = not isCollapsed
                     
                     if isCollapsed then
-                        -- FERMETURE : Anime vers hauteur header uniquement (42px)
-                        local targetHeight = 42
+                        -- FERMETURE : Anime vers hauteur header uniquement
+                        -- Header = 36px de titre + 6px de séparation = 42px minimum
+                        local targetHeight = 44  -- Un peu plus pour éviter de couper le titre
                         
                         CollapseArrow.Text = "▶"
                         
@@ -3412,7 +3413,7 @@ function Library:CreateWindow(Settings)
                             
                             -- Remet en mode manuel pour l'animation
                             BlockFrame.AutomaticSize = Enum.AutomaticSize.None
-                            BlockFrame.Size = UDim2.new(1, 0, 0, 42)
+                            BlockFrame.Size = UDim2.new(1, 0, 0, 44)  -- Part de 44px (header)
                             
                             -- Animation du BlockFrame vers hauteur complète
                             local openTween = TS:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
