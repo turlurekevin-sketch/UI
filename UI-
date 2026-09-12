@@ -3365,88 +3365,79 @@ function Library:CreateWindow(Settings)
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
                     ZIndex = 5,
-                    Visible = true,  -- Visible par défaut
-                    ClipsDescendants = false  -- Important pour l'animation
+                    Visible = true  -- Visible par défaut
                 })
                 
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- Variable pour stocker la taille originale du contenu
-                local originalContentSize = 0
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND SIMPLE ET FIABLE
+                local isAnimating = false
                 
-                -- Attend un frame pour que AutomaticSize calcule la vraie taille
-                task.defer(function()
-                    task.wait()
-                    originalContentSize = BlockContent.AbsoluteSize.Y
-                end)
-                
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND AVEC ANIMATION SMOOTH
                 CollapseButton.MouseButton1Click:Connect(function()
+                    if isAnimating then return end  -- Empêche les clics pendant l'animation
+                    
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
-                    
-                    -- Récupère la taille actuelle avant l'animation
-                    local currentSize = BlockContent.AbsoluteSize.Y
+                    isAnimating = true
                     
                     if isCollapsed then
-                        -- 🔽 FERMETURE SMOOTH
-                        
-                        -- Désactive AutomaticSize pour pouvoir animer
-                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
-                        BlockContent.Size = UDim2.new(1, 0, 0, currentSize)
-                        BlockContent.ClipsDescendants = true
-                        
-                        -- Anime vers taille 0
-                        Tween(BlockContent, 0.3, { 
-                            Size = UDim2.new(1, 0, 0, 0)
-                        })
-                        
-                        -- Animation de la flèche
+                        -- 🔽 FERMETURE SMOOTH avec Transparency
                         CollapseArrow.Text = "▶"
                         Tween(CollapseArrow, 0.3, { Rotation = -90 })
                         
-                        -- Cache complètement après l'animation
-                        task.delay(0.3, function()
-                            if isCollapsed then
-                                BlockContent.Visible = false
+                        -- Fade out du contenu
+                        for _, child in ipairs(BlockContent:GetDescendants()) do
+                            if child:IsA("GuiObject") and child ~= BlockContent then
+                                Tween(child, 0.25, { 
+                                    BackgroundTransparency = 1,
+                                    TextTransparency = 1
+                                })
                             end
+                            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
+                                Tween(child, 0.25, { ImageTransparency = 1 })
+                            end
+                            if child:IsA("UIStroke") then
+                                Tween(child, 0.25, { Transparency = 1 })
+                            end
+                        end
+                        
+                        -- Cache après le fade
+                        task.delay(0.25, function()
+                            BlockContent.Visible = false
+                            isAnimating = false
                         end)
                     else
-                        -- 🔼 OUVERTURE SMOOTH
-                        
-                        -- Montre d'abord le contenu
+                        -- 🔼 OUVERTURE SMOOTH avec Transparency
                         BlockContent.Visible = true
-                        BlockContent.AutomaticSize = Enum.AutomaticSize.None
-                        BlockContent.Size = UDim2.new(1, 0, 0, 0)
-                        BlockContent.ClipsDescendants = true
-                        
-                        -- Attend un frame pour calculer la taille cible
-                        task.defer(function()
-                            task.wait()
-                            BlockContent.AutomaticSize = Enum.AutomaticSize.Y
-                            task.wait()
-                            local targetSize = BlockContent.AbsoluteSize.Y
-                            BlockContent.AutomaticSize = Enum.AutomaticSize.None
-                            BlockContent.Size = UDim2.new(1, 0, 0, 0)
-                            
-                            -- Anime vers la taille calculée
-                            Tween(BlockContent, 0.4, { 
-                                Size = UDim2.new(1, 0, 0, targetSize)
-                            })
-                            
-                            -- Réactive AutomaticSize après l'animation
-                            task.delay(0.4, function()
-                                if not isCollapsed then
-                                    BlockContent.AutomaticSize = Enum.AutomaticSize.Y
-                                    BlockContent.ClipsDescendants = false
-                                end
-                            end)
-                        end)
-                        
-                        -- Animation de la flèche
                         CollapseArrow.Text = "▼"
-                        Tween(CollapseArrow, 0.4, { Rotation = 0 })
+                        Tween(CollapseArrow, 0.3, { Rotation = 0 })
+                        
+                        -- Remet les transparences d'origine en fade in
+                        task.wait(0.05)  -- Petit délai pour que le contenu soit visible
+                        
+                        for _, child in ipairs(BlockContent:GetDescendants()) do
+                            if child:IsA("GuiObject") and child ~= BlockContent then
+                                local originalTrans = child:GetAttribute("OriginalTransparency") or 0
+                                if child:IsA("Frame") then
+                                    originalTrans = 0.5
+                                end
+                                Tween(child, 0.3, { 
+                                    BackgroundTransparency = originalTrans,
+                                    TextTransparency = 0
+                                })
+                            end
+                            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
+                                Tween(child, 0.3, { ImageTransparency = 0 })
+                            end
+                            if child:IsA("UIStroke") then
+                                Tween(child, 0.3, { Transparency = 0.7 })
+                            end
+                        end
+                        
+                        task.delay(0.3, function()
+                            isAnimating = false
+                        end)
                     end
                 end)
                 
