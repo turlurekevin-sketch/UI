@@ -3267,6 +3267,7 @@ function Library:CreateWindow(Settings)
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundColor3 = SelectedTheme.Second,
                     BackgroundTransparency = 0.5,
+                    ClipsDescendants = true,  -- 🔑 Important pour l'animation collapse
                     ZIndex = 5,
                     ThemeTag = "Second"
                 })
@@ -3359,20 +3360,10 @@ function Library:CreateWindow(Settings)
                 end)
                 
                 -- Wrapper CanvasGroup pour effet fade smooth
-                local ContentWrapper = Create("CanvasGroup", {
+                local BlockContent = Create("Frame", {
                     Parent = BlockFrame,
                     Size = UDim2.new(1, 0, 0, 0),
                     Position = UDim2.new(0, 0, 0, 42),
-                    AutomaticSize = Enum.AutomaticSize.Y,
-                    BackgroundTransparency = 1,
-                    GroupTransparency = 0,  -- Opaque par défaut
-                    ZIndex = 5
-                })
-                
-                local BlockContent = Create("Frame", {
-                    Parent = ContentWrapper,
-                    Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 0, 0),
                     AutomaticSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
                     ZIndex = 5
@@ -3381,39 +3372,58 @@ function Library:CreateWindow(Settings)
                 Create("UIListLayout", { Parent = BlockContent, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) })
                 Create("UIPadding", { Parent = BlockContent, PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) })
                 
-                -- 🎬 LOGIQUE COLLAPSE/EXPAND avec FADE SMOOTH
+                -- 🎬 LOGIQUE COLLAPSE/EXPAND EXACTEMENT COMME DROPDOWN
                 CollapseButton.MouseButton1Click:Connect(function()
                     PlaySound("Click")
                     isCollapsed = not isCollapsed
                     
                     if isCollapsed then
-                        -- FERMETURE avec fade out smooth
+                        -- FERMETURE : Anime BlockFrame vers hauteur header seulement (42px)
+                        local targetHeight = 42
+                        
+                        -- Désactive AutomaticSize du BlockFrame
+                        BlockFrame.AutomaticSize = Enum.AutomaticSize.None
+                        
+                        -- Animation du BlockFrame (EXACTEMENT comme dropdown ligne 2850)
+                        TweenService:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                            Size = UDim2.new(1, 0, 0, targetHeight)
+                        }):Play()
+                        
+                        -- Animation de la flèche (même que dropdown)
+                        TweenService:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                            Rotation = -90
+                        }):Play()
+                        
                         CollapseArrow.Text = "▶"
                         
-                        -- Animation flèche
-                        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                        TweenService:Create(CollapseArrow, tweenInfo, { Rotation = -90 }):Play()
+                    else
+                        -- OUVERTURE : Anime BlockFrame vers hauteur complète
+                        CollapseArrow.Text = "▼"
                         
-                        -- Fade out du contenu (GroupTransparency)
-                        local fadeTween = TweenService:Create(ContentWrapper, tweenInfo, { GroupTransparency = 1 })
-                        fadeTween:Play()
+                        -- Réactive temporairement AutomaticSize pour calculer la hauteur complète
+                        BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
+                        task.wait()
+                        local fullHeight = BlockFrame.AbsoluteSize.Y
                         
-                        -- Cache complètement après le fade
-                        fadeTween.Completed:Connect(function()
-                            ContentWrapper.Visible = false
+                        -- Désactive AutomaticSize et fixe à hauteur header pour démarrer l'animation
+                        BlockFrame.AutomaticSize = Enum.AutomaticSize.None
+                        BlockFrame.Size = UDim2.new(1, 0, 0, 42)
+                        
+                        -- Animation du BlockFrame vers hauteur complète (EXACTEMENT comme dropdown)
+                        local tween = TweenService:Create(BlockFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                            Size = UDim2.new(1, 0, 0, fullHeight)
+                        })
+                        tween:Play()
+                        
+                        -- Réactive AutomaticSize après l'animation (comme dropdown)
+                        tween.Completed:Connect(function()
+                            BlockFrame.AutomaticSize = Enum.AutomaticSize.Y
                         end)
                         
-                    else
-                        -- OUVERTURE avec fade in smooth
-                        CollapseArrow.Text = "▼"
-                        ContentWrapper.Visible = true
-                        
-                        -- Animation flèche
-                        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                        TweenService:Create(CollapseArrow, tweenInfo, { Rotation = 0 }):Play()
-                        
-                        -- Fade in du contenu (GroupTransparency)
-                        TweenService:Create(ContentWrapper, tweenInfo, { GroupTransparency = 0 }):Play()
+                        -- Animation de la flèche (même que dropdown)
+                        TweenService:Create(CollapseArrow, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                            Rotation = 0
+                        }):Play()
                     end
                 end)
                 
